@@ -11,7 +11,7 @@ export function TopTeaser({
   task: TaskId
 }) {
   const { t } = useI18n()
-  const top = models.slice(0, 3)
+  const top = models.slice(0, 5)
 
   return (
     <section className="reveal reveal-delay-3">
@@ -26,7 +26,7 @@ export function TopTeaser({
           {t('viewFull')} →
         </Link>
       </div>
-      <ol className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-3">
+      <ol className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {top.map((model, index) => (
           <li key={model.id} className="min-w-0">
             <Link

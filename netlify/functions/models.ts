@@ -6,7 +6,7 @@ type CacheEntry = {
   expiresAt: number
 }
 
-const CACHE_TTL_MS = 6 * 60 * 60 * 1000
+const CACHE_TTL_MS = 30 * 60 * 1000
 let memoryCache: CacheEntry | null = null
 
 const PRIMARY_URL = 'https://artificialanalysis.ai/api/v2/data/llms/models'
@@ -20,7 +20,7 @@ function corsHeaders() {
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Content-Type': 'application/json',
-    'Cache-Control': 'public, max-age=300, s-maxage=21600',
+    'Cache-Control': 'public, max-age=60, s-maxage=1800',
   }
 }
 

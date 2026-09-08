@@ -6,7 +6,7 @@ const PRIMARY_URL = 'https://artificialanalysis.ai/api/v2/data/llms/models'
 const FREE_URL = 'https://artificialanalysis.ai/api/v2/language/models/free'
 const IMAGE_URL = 'https://artificialanalysis.ai/api/v2/data/media/text-to-image'
 const SPEECH_URL = 'https://artificialanalysis.ai/api/v2/data/media/text-to-speech'
-const CACHE_TTL_MS = 6 * 60 * 60 * 1000
+const CACHE_TTL_MS = 30 * 60 * 1000
 
 type Cache = { body: string; expiresAt: number } | null
 let cache: Cache = null

@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import fallbackBundle from '../data/fallback-models.json'
 import { normalizeIncomingModels, normalizeLanguageModel, normalizeMediaModel } from '../lib/normalize'
 import type { AiModel, ModelsResponse } from '../types/models'
+
+const REFRESH_MS = 15 * 60 * 1000
 
 function fromFallback(): ModelsResponse {
   const fb = fallbackBundle as {
@@ -21,10 +23,15 @@ function fromFallback(): ModelsResponse {
 
 async function loadModels(): Promise<ModelsResponse> {
   const endpoints = ['/api/models', '/.netlify/functions/models']
+  const bust = `t=${Date.now()}`
 
   for (const endpoint of endpoints) {
     try {
-      const res = await fetch(endpoint)
+      const sep = endpoint.includes('?') ? '&' : '?'
+      const res = await fetch(`${endpoint}${sep}${bust}`, {
+        cache: 'no-store',
+        headers: { Accept: 'application/json' },
+      })
       if (!res.ok) continue
       const json = await res.json()
       const data = normalizeIncomingModels(json)
@@ -49,29 +56,30 @@ export function useModels() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      setLoading(true)
-      try {
-        const result = await loadModels()
-        if (!cancelled) {
-          setData(result)
-          setError(result.source === 'fallback')
-        }
-      } catch {
-        if (!cancelled) {
-          setData(fromFallback())
-          setError(true)
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
+  const refresh = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
+    try {
+      const result = await loadModels()
+      setData(result)
+      setError(result.source === 'fallback')
+    } catch {
+      setData(fromFallback())
+      setError(true)
+    } finally {
+      setLoading(false)
     }
   }, [])
 
-  return { data, loading, error, models: data?.data ?? ([] as AiModel[]) }
+  useEffect(() => {
+    void refresh(false)
+    const id = window.setInterval(() => void refresh(true), REFRESH_MS)
+    const onFocus = () => void refresh(true)
+    window.addEventListener('focus', onFocus)
+    return () => {
+      window.clearInterval(id)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [refresh])
+
+  return { data, loading, error, models: data?.data ?? ([] as AiModel[]), refresh }
 }

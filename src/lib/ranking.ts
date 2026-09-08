@@ -113,12 +113,28 @@ function familyKey(model: AiModel): string {
   return `${model.model_creator.name.toLowerCase()}::${base}`
 }
 
+function variantPreference(model: AiModel): number {
+  const n = model.name.toLowerCase()
+  if (/\(max\)|max effort/.test(n)) return 5
+  if (/\(xhigh\)|xhigh effort/.test(n)) return 4
+  if (/\(high\)|high effort/.test(n)) return 3
+  if (/\(medium\)|medium effort/.test(n)) return 2
+  if (/\(low\)|non-reasoning/.test(n)) return 1
+  return 0
+}
+
+function isBetterVariant(next: RankedModel, prev: RankedModel): boolean {
+  if (next.score > prev.score + 0.05) return true
+  if (prev.score > next.score + 0.05) return false
+  return variantPreference(next) >= variantPreference(prev)
+}
+
 function dedupeBestByFamily(models: RankedModel[]): RankedModel[] {
   const best = new Map<string, RankedModel>()
   for (const model of models) {
     const key = familyKey(model)
     const prev = best.get(key)
-    if (!prev || model.score > prev.score) best.set(key, model)
+    if (!prev || isBetterVariant(model, prev)) best.set(key, model)
   }
   return [...best.values()]
 }
