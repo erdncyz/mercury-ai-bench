@@ -1,14 +1,13 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { BestFpCard } from '../components/BestFpCard'
-import { CostCalculator } from '../components/CostCalculator'
 import { LeaderboardTable } from '../components/LeaderboardTable'
 import { SiteFooter } from '../components/SiteFooter'
 import { SiteHeader } from '../components/SiteHeader'
 import { TaskPicker } from '../components/TaskPicker'
 import { useModels } from '../hooks/useModels'
 import { useI18n } from '../i18n/I18nProvider'
-import { bestValueModels, COST_SCENARIOS, rankModels, TASK_IDS } from '../lib/ranking'
+import { bestValueModels, rankModels, TASK_IDS } from '../lib/ranking'
 import type { SortKey, TaskId } from '../types/models'
 
 const SORT_IDS: SortKey[] = ['score', 'price', 'speed', 'value']
@@ -30,9 +29,6 @@ export function BenchPage() {
   const sort = parseSort(params.get('sort'))
   const [query, setQuery] = useState('')
   const [creator, setCreator] = useState('all')
-  const [scenarioId, setScenarioId] = useState('code')
-  const [inputTokens, setInputTokens] = useState(COST_SCENARIOS[1].inputTokens)
-  const [outputTokens, setOutputTokens] = useState(COST_SCENARIOS[1].outputTokens)
 
   const creators = useMemo(() => {
     const pool =
@@ -46,7 +42,7 @@ export function BenchPage() {
   }, [models, task])
 
   const ranked = useMemo(() => {
-    let list = rankModels(models, task, sort, inputTokens, outputTokens)
+    let list = rankModels(models, task, sort)
     if (creator !== 'all') {
       list = list.filter((m) => m.model_creator.name === creator)
     }
@@ -60,7 +56,7 @@ export function BenchPage() {
       )
     }
     return list
-  }, [models, task, sort, inputTokens, outputTokens, creator, query])
+  }, [models, task, sort, creator, query])
 
   const bestFp = useMemo(() => bestValueModels(ranked, 3), [ranked])
   const isMedia = task === 'image' || task === 'speech'
@@ -111,59 +107,45 @@ export function BenchPage() {
 
         {!loading && <BestFpCard models={bestFp} task={task} />}
 
-        <div className="mb-6 grid gap-4 lg:grid-cols-[1fr_280px] reveal reveal-delay-2">
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t('search')}
-              className="w-full rounded-lg border border-ink-line bg-ink-elevated px-3 py-2 text-sm text-mercury outline-none placeholder:text-mercury-mute focus:border-cyan/40 sm:max-w-xs"
-            />
-            <select
-              value={creator}
-              onChange={(e) => setCreator(e.target.value)}
-              className="rounded-lg border border-ink-line bg-ink-elevated px-3 py-2 text-sm text-mercury outline-none focus:border-cyan/40"
-            >
-              <option value="all">{t('allCreators')}</option>
-              {creators.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-[11px] uppercase tracking-wider text-mercury-mute">
-                {t('sortBy')}
-              </span>
-              {SORT_IDS.filter((key) => !(isMedia && key === 'speed')).map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setSort(key)}
-                  className={`rounded-md border px-2.5 py-1 text-xs transition ${
-                    sort === key
-                      ? 'border-cyan/40 bg-cyan/10 text-cyan'
-                      : 'border-ink-line text-mercury-mute hover:text-mercury'
-                  }`}
-                >
-                  {sortLabel(key)}
-                </button>
-              ))}
-            </div>
+        <div className="panel mb-6 flex flex-col gap-3 rounded-2xl p-3 sm:flex-row sm:flex-wrap sm:items-center reveal reveal-delay-2">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t('search')}
+            className="min-w-0 flex-1 rounded-lg border border-ink-line bg-ink px-3 py-2 text-sm text-mercury outline-none placeholder:text-mercury-mute focus:border-cyan/40 sm:max-w-xs"
+          />
+          <select
+            value={creator}
+            onChange={(e) => setCreator(e.target.value)}
+            className="rounded-lg border border-ink-line bg-ink px-3 py-2 text-sm text-mercury outline-none focus:border-cyan/40"
+          >
+            <option value="all">{t('allCreators')}</option>
+            {creators.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+            <span className="font-mono text-[11px] uppercase tracking-wider text-mercury-mute">
+              {t('sortBy')}
+            </span>
+            {SORT_IDS.filter((key) => !(isMedia && key === 'speed')).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setSort(key)}
+                className={`rounded-md border px-2.5 py-1.5 text-xs transition ${
+                  sort === key
+                    ? 'border-cyan/40 bg-cyan/10 text-cyan'
+                    : 'border-ink-line text-mercury-mute hover:text-mercury'
+                }`}
+              >
+                {sortLabel(key)}
+              </button>
+            ))}
           </div>
-          {!isMedia && (
-            <CostCalculator
-              inputTokens={inputTokens}
-              outputTokens={outputTokens}
-              scenarioId={scenarioId}
-              onScenario={setScenarioId}
-              onChange={(input, output) => {
-                setInputTokens(input)
-                setOutputTokens(output)
-              }}
-            />
-          )}
         </div>
 
         {loading ? (
