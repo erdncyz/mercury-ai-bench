@@ -103,6 +103,26 @@ export function estimateRequestCost(
   return (inputTokens / 1_000_000) * input + (outputTokens / 1_000_000) * output
 }
 
+/** Collapse effort/variant spam: keep best scoring row per creator + base name. */
+function familyKey(model: AiModel): string {
+  const base = model.name
+    .replace(/\s*\([^)]*\)/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+  return `${model.model_creator.name.toLowerCase()}::${base}`
+}
+
+function dedupeBestByFamily(models: RankedModel[]): RankedModel[] {
+  const best = new Map<string, RankedModel>()
+  for (const model of models) {
+    const key = familyKey(model)
+    const prev = best.get(key)
+    if (!prev || model.score > prev.score) best.set(key, model)
+  }
+  return [...best.values()]
+}
+
 export function rankModels(
   models: AiModel[],
   task: TaskId,
@@ -127,7 +147,9 @@ export function rankModels(
     })
     .filter((m): m is RankedModel => m != null)
 
-  const byPrimary = [...enriched].sort((a, b) => b.score - a.score)
+  const unique = dedupeBestByFamily(enriched)
+
+  const byPrimary = [...unique].sort((a, b) => b.score - a.score)
   byPrimary.forEach((m, i) => {
     m.rank = i + 1
   })
