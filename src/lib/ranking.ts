@@ -183,10 +183,16 @@ export function rankModels(
   return sorted
 }
 
+export function bestValueModels(models: RankedModel[], limit = 3): RankedModel[] {
+  return [...models]
+    .filter((m) => m.valueScore > 0)
+    .sort((a, b) => b.valueScore - a.valueScore)
+    .slice(0, limit)
+}
+
+/** @deprecated use bestValueModels */
 export function bestValueModel(models: RankedModel[]): RankedModel | null {
-  const priced = models.filter((m) => m.valueScore > 0)
-  if (priced.length === 0) return null
-  return [...priced].sort((a, b) => b.valueScore - a.valueScore)[0] ?? null
+  return bestValueModels(models, 1)[0] ?? null
 }
 
 export function formatUsd(value: number | null | undefined, digits = 2): string {

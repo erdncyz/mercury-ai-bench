@@ -2,13 +2,13 @@ import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { BestFpCard } from '../components/BestFpCard'
 import { CostCalculator } from '../components/CostCalculator'
-import { LeaderboardTable, ValueStrip } from '../components/LeaderboardTable'
+import { LeaderboardTable } from '../components/LeaderboardTable'
 import { SiteFooter } from '../components/SiteFooter'
 import { SiteHeader } from '../components/SiteHeader'
 import { TaskPicker } from '../components/TaskPicker'
 import { useModels } from '../hooks/useModels'
 import { useI18n } from '../i18n/I18nProvider'
-import { bestValueModel, COST_SCENARIOS, rankModels, TASK_IDS } from '../lib/ranking'
+import { bestValueModels, COST_SCENARIOS, rankModels, TASK_IDS } from '../lib/ranking'
 import type { SortKey, TaskId } from '../types/models'
 
 const SORT_IDS: SortKey[] = ['score', 'price', 'speed', 'value']
@@ -62,7 +62,7 @@ export function BenchPage() {
     return list
   }, [models, task, sort, inputTokens, outputTokens, creator, query])
 
-  const bestFp = useMemo(() => bestValueModel(ranked), [ranked])
+  const bestFp = useMemo(() => bestValueModels(ranked, 3), [ranked])
   const isMedia = task === 'image' || task === 'speech'
 
   const setTask = (next: TaskId) => {
@@ -109,7 +109,7 @@ export function BenchPage() {
           <TaskPicker value={task} onChange={setTask} compact />
         </div>
 
-        {!loading && <BestFpCard model={bestFp} task={task} />}
+        {!loading && <BestFpCard models={bestFp} task={task} />}
 
         <div className="mb-6 grid gap-4 lg:grid-cols-[1fr_280px] reveal reveal-delay-2">
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -169,10 +169,7 @@ export function BenchPage() {
         {loading ? (
           <p className="font-mono text-sm text-mercury-mute">{t('loading')}</p>
         ) : (
-          <>
-            <ValueStrip models={ranked} task={task} />
-            <LeaderboardTable models={ranked} task={task} shimmerKey={task} />
-          </>
+          <LeaderboardTable models={ranked} task={task} shimmerKey={task} />
         )}
       </main>
       <SiteFooter fetchedAt={data?.fetchedAt} source={data?.source} />

@@ -6,7 +6,7 @@ import { TaskPicker } from '../components/TaskPicker'
 import { TopTeaser } from '../components/TopTeaser'
 import { useModels } from '../hooks/useModels'
 import { useI18n } from '../i18n/I18nProvider'
-import { bestValueModel, rankModels } from '../lib/ranking'
+import { bestValueModels, rankModels } from '../lib/ranking'
 import type { TaskId } from '../types/models'
 import { useMemo, useState } from 'react'
 
@@ -19,7 +19,7 @@ export function HomePage() {
     () => rankModels(models, task, 'score'),
     [models, task],
   )
-  const bestFp = useMemo(() => bestValueModel(ranked), [ranked])
+  const bestFp = useMemo(() => bestValueModels(ranked, 3), [ranked])
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -60,7 +60,7 @@ export function HomePage() {
           <p className="font-mono text-sm text-mercury-mute">{t('loading')}</p>
         ) : (
           <>
-            <BestFpCard model={bestFp} task={task} />
+            <BestFpCard models={bestFp} task={task} />
             <TopTeaser models={ranked} task={task} />
           </>
         )}
