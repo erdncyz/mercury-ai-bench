@@ -1,0 +1,143 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #070b14;
+  --color-ink-elevated: #0d1424;
+  --color-ink-panel: #121a2c;
+  --color-ink-line: #1c2740;
+  --color-mercury: #d7e0ef;
+  --color-mercury-dim: #8fa3c0;
+  --color-mercury-mute: #5c6f8c;
+  --color-cyan: #5eead4;
+  --color-cyan-dim: #2dd4bf;
+  --font-display: "Instrument Serif", Georgia, serif;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: var(--font-sans);
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(94, 234, 212, 0.08), transparent 55%),
+      radial-gradient(900px 500px at 10% 0%, rgba(215, 224, 239, 0.06), transparent 50%),
+      linear-gradient(180deg, #0a101c 0%, var(--color-ink) 40%, #05080f 100%);
+    color: var(--color-mercury);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button,
+  input,
+  select {
+    font: inherit;
+  }
+
+  ::selection {
+    background: rgba(94, 234, 212, 0.28);
+    color: white;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  .mercury-shimmer {
+    background: linear-gradient(
+      110deg,
+      transparent 20%,
+      rgba(215, 224, 239, 0.12) 40%,
+      rgba(94, 234, 212, 0.18) 50%,
+      rgba(215, 224, 239, 0.12) 60%,
+      transparent 80%
+    );
+    background-size: 200% 100%;
+    animation: mercury-flow 1.2s ease-out;
+  }
+
+  .rank-metal {
+    background: linear-gradient(135deg, #f4f7fb 0%, #9fb0c7 45%, #5eead4 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .panel {
+    background: color-mix(in oklab, var(--color-ink-panel) 88%, transparent);
+    border: 1px solid var(--color-ink-line);
+    backdrop-filter: blur(12px);
+  }
+
+  .reveal {
+    animation: reveal-up 0.7s ease-out both;
+  }
+
+  .reveal-delay-1 {
+    animation-delay: 0.08s;
+  }
+
+  .reveal-delay-2 {
+    animation-delay: 0.16s;
+  }
+
+  .reveal-delay-3 {
+    animation-delay: 0.24s;
+  }
+}
+
+@keyframes mercury-flow {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -40% 0;
+  }
+}
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mercury-shimmer,
+  .reveal,
+  .reveal-delay-1,
+  .reveal-delay-2,
+  .reveal-delay-3 {
+    animation: none !important;
+  }
+}
