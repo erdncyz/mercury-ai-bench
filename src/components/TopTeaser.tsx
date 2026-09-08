@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useI18n } from '../i18n/I18nProvider'
-import { formatScore, formatUsd } from '../lib/ranking'
+import { formatScore, formatUsd, shortModelName } from '../lib/ranking'
 import type { RankedModel, TaskId } from '../types/models'
 
 export function TopTeaser({
@@ -26,12 +26,13 @@ export function TopTeaser({
           {t('viewFull')} →
         </Link>
       </div>
-      <ol className="grid gap-3 md:grid-cols-3">
+      <ol className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-3">
         {top.map((model, index) => (
-          <li key={model.id}>
+          <li key={model.id} className="min-w-0">
             <Link
               to={`/model/${model.slug}?task=${task}`}
-              className="panel block rounded-2xl p-5 transition hover:border-cyan/30 hover:bg-ink-panel"
+              title={model.name}
+              className="panel flex h-full min-h-[168px] flex-col rounded-2xl p-5 transition hover:border-cyan/30 hover:bg-ink-panel"
             >
               <div className="flex items-baseline justify-between">
                 <span className="rank-metal font-display text-3xl">{model.rank}</span>
@@ -39,9 +40,13 @@ export function TopTeaser({
                   #{index + 1}
                 </span>
               </div>
-              <p className="mt-3 text-lg font-medium text-mercury">{model.name}</p>
-              <p className="text-sm text-mercury-mute">{model.model_creator.name}</p>
-              <div className="mt-4 flex items-center justify-between border-t border-ink-line pt-3 font-mono text-xs">
+              <p className="mt-3 line-clamp-2 min-h-[3.25rem] text-lg font-medium leading-snug text-mercury">
+                {shortModelName(model.name)}
+              </p>
+              <p className="truncate text-sm text-mercury-mute">
+                {model.model_creator.name}
+              </p>
+              <div className="mt-auto flex items-center justify-between border-t border-ink-line pt-3 font-mono text-xs">
                 <span className="text-mercury-dim">
                   {t('score')}{' '}
                   {formatScore(

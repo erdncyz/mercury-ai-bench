@@ -209,6 +209,11 @@ export function formatScore(value: number | null | undefined, digits = 1): strin
   return value.toFixed(digits)
 }
 
+/** Strip effort/variant parentheticals for compact card titles. */
+export function shortModelName(name: string): string {
+  return name.replace(/\s*\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
 export function formatSpeed(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return '—'
   return `${Math.round(value)} t/s`
