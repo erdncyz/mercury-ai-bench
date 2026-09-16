@@ -1,3 +1,4 @@
+import { ArrowUpRight } from '@phosphor-icons/react'
 import { useI18n } from '../i18n/I18nProvider'
 
 export function SiteFooter({
@@ -26,10 +27,10 @@ export function SiteFooter({
           : null
 
   return (
-    <footer className="mt-auto border-t border-ink-line/80">
-      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-5 py-8 text-sm text-mercury-mute md:flex-row md:items-center md:justify-between md:px-8">
+    <footer className="relative z-10 mt-auto border-t border-white/8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-8 text-sm text-mercury-mute md:flex-row md:items-center md:justify-between md:px-8">
         <div>
-          <p className="font-display text-lg text-mercury/80">{t('brand')}</p>
+          <p className="font-display text-lg text-mercury/85">{t('brand')}</p>
           <p className="mt-1 text-mercury-mute">{t('footerTagline')}</p>
         </div>
         <div className="flex flex-col gap-1 md:items-end">
@@ -37,9 +38,10 @@ export function SiteFooter({
             href="https://artificialanalysis.ai/"
             target="_blank"
             rel="noreferrer"
-            className="text-mercury-dim underline-offset-4 hover:text-cyan hover:underline"
+            className="inline-flex items-center gap-1 text-mercury-dim underline-offset-4 hover:text-cyan hover:underline"
           >
             {t('attribution')}
+            <ArrowUpRight size={14} />
           </a>
           {(updated || sourceLabel) && (
             <p className="font-mono text-[11px] tracking-wide">

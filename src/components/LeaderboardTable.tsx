@@ -1,5 +1,9 @@
 import { Link } from 'react-router-dom'
+import { motion } from 'motion/react'
+import { ScoreBar } from './charts/ScoreBar'
 import { useI18n } from '../i18n/I18nProvider'
+import { creatorColor } from '../lib/creatorColors'
+import { fadeIn } from '../lib/motion'
 import {
   formatMediaPrice,
   formatScore,
@@ -67,6 +71,7 @@ export function LeaderboardTable({
 }) {
   const { t } = useI18n()
   const media = isMediaTask(task)
+  const maxScore = Math.max(...models.map((m) => m.score), 1)
 
   if (models.length === 0) {
     return (
@@ -77,14 +82,17 @@ export function LeaderboardTable({
   }
 
   return (
-    <div
+    <motion.div
       key={shimmerKey}
       className="panel mercury-shimmer overflow-hidden rounded-2xl"
+      variants={fadeIn}
+      initial="hidden"
+      animate="show"
     >
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[820px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[900px] border-collapse text-left text-sm">
           <thead>
-            <tr className="border-b border-ink-line text-[11px] uppercase tracking-[0.16em] text-mercury-mute">
+            <tr className="border-b border-white/8 text-[11px] uppercase tracking-[0.16em] text-mercury-mute">
               <th className="px-4 py-3 font-medium">{t('rank')}</th>
               <th className="px-4 py-3 font-medium">{t('model')}</th>
               <th className="px-4 py-3 font-medium">
@@ -105,10 +113,10 @@ export function LeaderboardTable({
             </tr>
           </thead>
           <tbody>
-            {models.map((model) => (
+            {models.map((model, index) => (
               <tr
                 key={model.id}
-                className="border-b border-ink-line/70 transition hover:bg-cyan/[0.04]"
+                className="border-b border-white/6 transition hover:bg-cyan/[0.05]"
               >
                 <td className="px-4 py-3">
                   <span className="rank-metal font-display text-xl">{model.rank}</span>
@@ -120,12 +128,22 @@ export function LeaderboardTable({
                   >
                     {model.name}
                   </Link>
-                  <div className="text-xs text-mercury-mute">
+                  <div className="mt-0.5 flex items-center gap-1.5 text-xs text-mercury-mute">
+                    <span
+                      className="inline-block h-1.5 w-1.5 rounded-full"
+                      style={{ background: creatorColor(model.model_creator.name) }}
+                      aria-hidden
+                    />
                     {model.model_creator.name}
                   </div>
                 </td>
-                <td className="px-4 py-3 font-mono text-mercury-dim">
-                  {formatScore(model.score, media ? 0 : task === 'agents' ? 2 : 1)}
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <span className="w-10 font-mono text-mercury-dim">
+                      {formatScore(model.score, media ? 0 : task === 'agents' ? 2 : 1)}
+                    </span>
+                    <ScoreBar value={model.score} max={maxScore} delay={Math.min(index * 0.02, 0.4)} />
+                  </div>
                 </td>
                 {media ? (
                   <td className="px-4 py-3 font-mono text-mercury-dim">
@@ -161,6 +179,6 @@ export function LeaderboardTable({
           </tbody>
         </table>
       </div>
-    </div>
+    </motion.div>
   )
 }
