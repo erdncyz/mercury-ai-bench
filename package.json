@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/refresh-fallback.mjs",
     "build": "tsc -b && vite build",
+    "refresh-fallback": "node scripts/refresh-fallback.mjs",
     "lint": "oxlint",
     "preview": "vite preview",
     "netlify:dev": "netlify dev"

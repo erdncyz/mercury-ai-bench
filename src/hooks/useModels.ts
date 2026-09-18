@@ -1,22 +1,23 @@
 import { useCallback, useEffect, useState } from 'react'
-import fallbackBundle from '../data/fallback-models.json'
 import { normalizeIncomingModels, normalizeLanguageModel, normalizeMediaModel } from '../lib/normalize'
 import type { AiModel, ModelsResponse } from '../types/models'
 
-const REFRESH_MS = 15 * 60 * 1000
+const REFRESH_MS = 10 * 60 * 1000
 
-function fromFallback(): ModelsResponse {
-  const fb = fallbackBundle as {
+// Lazy-loaded so the full fallback dataset stays out of the main bundle.
+async function fromFallback(): Promise<ModelsResponse> {
+  const fb = (await import('../data/fallback-models.json')).default as {
     language?: Record<string, unknown>[]
     image?: Record<string, unknown>[]
     speech?: Record<string, unknown>[]
+    fetchedAt?: string
   }
   const language = (fb.language ?? []).map(normalizeLanguageModel)
   const image = (fb.image ?? []).map((m) => normalizeMediaModel(m, 'image'))
   const speech = (fb.speech ?? []).map((m) => normalizeMediaModel(m, 'speech'))
   return {
     data: [...language, ...image, ...speech],
-    fetchedAt: new Date().toISOString(),
+    fetchedAt: fb.fetchedAt ?? new Date().toISOString(),
     source: 'fallback',
   }
 }
@@ -63,7 +64,7 @@ export function useModels() {
       setData(result)
       setError(result.source === 'fallback')
     } catch {
-      setData(fromFallback())
+      setData(await fromFallback())
       setError(true)
     } finally {
       setLoading(false)

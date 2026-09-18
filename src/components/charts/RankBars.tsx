@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useI18n } from '../../i18n/I18nProvider'
 import { creatorColor } from '../../lib/creatorColors'
 import { cinemaEase } from '../../lib/motion'
-import { formatScore, shortModelName } from '../../lib/ranking'
+import { formatScore, scoreDigits, shortModelName } from '../../lib/ranking'
 import type { RankedModel, TaskId } from '../../types/models'
 
 export function RankBars({
@@ -19,7 +19,7 @@ export function RankBars({
   const reduced = useReducedMotion()
   const top = models.slice(0, limit)
   const max = Math.max(...top.map((m) => m.score), 1)
-  const digits = task === 'image' || task === 'speech' ? 0 : task === 'agents' ? 2 : 1
+  const digits = scoreDigits(task)
 
   if (top.length === 0) return null
 

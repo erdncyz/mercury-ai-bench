@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { ChartBar, House } from '@phosphor-icons/react'
+import { ChartBar, House, Scales } from '@phosphor-icons/react'
 import { useI18n } from '../i18n/I18nProvider'
 import type { Locale } from '../i18n/messages'
 
@@ -40,6 +40,17 @@ export function SiteHeader() {
           >
             <ChartBar size={15} weight="duotone" />
             {t('navBench')}
+          </NavLink>
+          <NavLink
+            to="/compare"
+            className={({ isActive }) =>
+              `inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition ${
+                isActive ? 'bg-white/5 text-mercury' : 'text-mercury-mute hover:text-mercury'
+              }`
+            }
+          >
+            <Scales size={15} weight="duotone" />
+            {t('navCompare')}
           </NavLink>
           <div className="ml-2 flex overflow-hidden rounded-md border border-white/10">
             {(['en', 'tr'] as Locale[]).map((code) => (

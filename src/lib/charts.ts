@@ -85,6 +85,16 @@ export function skillProfile(model: RankedModel): SkillAxis[] {
       max: 100,
     },
     {
+      id: 'longContextIndex',
+      value: model.evaluations.lcr == null ? null : model.evaluations.lcr * 100,
+      max: 100,
+    },
+    {
+      id: 'instructionIndex',
+      value: model.evaluations.ifbench == null ? null : model.evaluations.ifbench * 100,
+      max: 100,
+    },
+    {
       id: 'speed',
       value: model.median_output_tokens_per_second,
       max: 250,
@@ -95,4 +105,20 @@ export function skillProfile(model: RankedModel): SkillAxis[] {
 export function normalizeSkill(axis: SkillAxis): number {
   if (axis.value == null || axis.max <= 0) return 0
   return Math.max(0, Math.min(100, (axis.value / axis.max) * 100))
+}
+
+export function polar(cx: number, cy: number, r: number, angle: number) {
+  const rad = (Math.PI / 180) * angle
+  return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)] as const
+}
+
+/** Values are 0–100 percentages, drawn clockwise from 12 o'clock. */
+export function radarPolygon(values: number[], cx: number, cy: number, r: number) {
+  const step = 360 / values.length
+  return values
+    .map((value, i) => {
+      const [x, y] = polar(cx, cy, (value / 100) * r, -90 + i * step)
+      return `${x},${y}`
+    })
+    .join(' ')
 }

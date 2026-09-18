@@ -3,6 +3,8 @@ export type TaskId =
   | 'agents'
   | 'math'
   | 'intelligence'
+  | 'longcontext'
+  | 'instruction'
   | 'image'
   | 'speech'
   | 'speed'
@@ -30,6 +32,12 @@ export interface ModelEvaluations {
   mmlu_pro?: number | null
   gpqa?: number | null
   hle?: number | null
+  /** Long context reasoning, 0–1 */
+  lcr?: number | null
+  /** Instruction following, 0–1 */
+  ifbench?: number | null
+  terminalbench_hard?: number | null
+  math_500?: number | null
 }
 
 export interface ModelPricing {

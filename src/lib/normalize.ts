@@ -42,6 +42,10 @@ export function normalizeLanguageModel(raw: Record<string, unknown>): AiModel {
       mmlu_pro: asNumber(evaluations.mmlu_pro),
       gpqa: asNumber(evaluations.gpqa),
       hle: asNumber(evaluations.hle),
+      lcr: asNumber(evaluations.lcr),
+      ifbench: asNumber(evaluations.ifbench),
+      terminalbench_hard: asNumber(evaluations.terminalbench_hard),
+      math_500: asNumber(evaluations.math_500),
     },
     pricing: {
       price_1m_blended_3_to_1: asNumber(pricing.price_1m_blended_3_to_1),

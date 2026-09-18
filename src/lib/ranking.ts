@@ -11,10 +11,30 @@ export const TASK_IDS: TaskId[] = [
   'agents',
   'math',
   'intelligence',
+  'longcontext',
+  'instruction',
   'image',
   'speech',
   'speed',
 ]
+
+/** Tasks whose score is a 0–1 fraction rather than an index. */
+export function isFractionTask(task: TaskId): boolean {
+  return task === 'agents' || task === 'longcontext' || task === 'instruction'
+}
+
+export function scoreDigits(task: TaskId): number {
+  if (task === 'image' || task === 'speech') return 0
+  return isFractionTask(task) ? 2 : 1
+}
+
+const NEW_WINDOW_MS = 30 * 24 * 60 * 60 * 1000
+
+export function isNewRelease(model: AiModel, now = Date.now()): boolean {
+  if (!model.release_date) return false
+  const ts = Date.parse(model.release_date)
+  return Number.isFinite(ts) && now - ts <= NEW_WINDOW_MS
+}
 
 export function modelsForTask(models: AiModel[], task: TaskId): AiModel[] {
   switch (task) {
@@ -22,14 +42,8 @@ export function modelsForTask(models: AiModel[], task: TaskId): AiModel[] {
       return models.filter((m) => m.kind === 'image')
     case 'speech':
       return models.filter((m) => m.kind === 'speech')
-    case 'coding':
-    case 'agents':
-    case 'math':
-    case 'intelligence':
-    case 'speed':
-      return models.filter((m) => m.kind === 'language')
     default:
-      return models
+      return models.filter((m) => m.kind === 'language')
   }
 }
 
@@ -44,6 +58,10 @@ export function getTaskScore(model: AiModel, task: TaskId): number | null {
       return e.artificial_analysis_math_index
     case 'intelligence':
       return e.artificial_analysis_intelligence_index
+    case 'longcontext':
+      return e.lcr ?? null
+    case 'instruction':
+      return e.ifbench ?? null
     case 'image':
     case 'speech':
       return model.elo ?? null
@@ -67,16 +85,9 @@ export function getValueScore(model: AiModel, task: TaskId): number | null {
   const price = model.pricing.price_1m_blended_3_to_1
   if (price == null || price <= 0) return null
 
+  // Speed ranks by tok/s, but value should still reflect quality per dollar.
   const quality =
-    task === 'coding'
-      ? model.evaluations.artificial_analysis_coding_index
-      : task === 'agents'
-        ? model.evaluations.tau2 ?? model.evaluations.terminalbench_v2_1
-        : task === 'math'
-          ? model.evaluations.artificial_analysis_math_index
-          : task === 'speed'
-            ? model.evaluations.artificial_analysis_intelligence_index
-            : model.evaluations.artificial_analysis_intelligence_index
+    task === 'speed' ? model.evaluations.artificial_analysis_intelligence_index : score
 
   if (quality == null) return null
   return quality / price

@@ -1,7 +1,9 @@
-import { ArrowLeft } from '@phosphor-icons/react'
+import { ArrowLeft, Scales } from '@phosphor-icons/react'
 import { useMemo } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { SkillCharts } from '../components/charts/SkillCharts'
+import { CopyLinkButton } from '../components/CopyLinkButton'
+import { FavoriteButton } from '../components/FavoriteButton'
 import { PageShell, SkeletonBlock } from '../components/PageShell'
 import { useModels } from '../hooks/useModels'
 import { useI18n } from '../i18n/I18nProvider'
@@ -10,8 +12,10 @@ import {
   formatScore,
   formatSpeed,
   formatUsd,
+  isNewRelease,
   percentile,
   rankModels,
+  scoreDigits,
   TASK_IDS,
 } from '../lib/ranking'
 import type { TaskId } from '../types/models'
@@ -61,21 +65,41 @@ export function ModelPage() {
 
   return (
     <PageShell fetchedAt={data?.fetchedAt} source={data?.source} wide>
-      <Link
-        to={`/bench?task=${task}`}
-        className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-mercury-mute hover:text-cyan"
-      >
-        <ArrowLeft size={14} />
-        {t('back')}
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link
+          to={`/bench?task=${task}`}
+          className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-mercury-mute hover:text-cyan"
+        >
+          <ArrowLeft size={14} />
+          {t('back')}
+        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            to={`/compare?task=${task}&m=${display.slug}`}
+            className="inline-flex items-center gap-1.5 rounded-md border border-white/8 px-2.5 py-1.5 font-mono text-[11px] uppercase tracking-wider text-mercury-mute transition hover:border-cyan/40 hover:text-cyan"
+          >
+            <Scales size={13} />
+            {t('compare')}
+          </Link>
+          <CopyLinkButton />
+        </div>
+      </div>
 
       <header className="mt-6">
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-mercury-mute">
           {display.model_creator.name}
         </p>
-        <h1 className="mt-2 font-display text-4xl text-mercury md:text-6xl">
-          {display.name}
-        </h1>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <h1 className="font-display text-4xl text-mercury md:text-6xl">
+            {display.name}
+          </h1>
+          <FavoriteButton slug={display.slug} size={22} />
+          {isNewRelease(display) && (
+            <span className="rounded-full border border-cyan/40 bg-cyan/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-cyan">
+              {t('newBadge')}
+            </span>
+          )}
+        </div>
         {model && pct != null && (
           <p className="mt-3 font-mono text-sm text-cyan">
             #{model.rank} · {t('percentile')} {pct}
@@ -134,6 +158,30 @@ export function ModelPage() {
                       display.evaluations.tau2 ?? display.evaluations.terminalbench_v2_1,
                       2,
                     )}
+                  </dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-mercury-mute">{t('longContextIndex')}</dt>
+                  <dd className="font-mono text-mercury">
+                    {formatScore(display.evaluations.lcr, 2)}
+                  </dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-mercury-mute">{t('instructionIndex')}</dt>
+                  <dd className="font-mono text-mercury">
+                    {formatScore(display.evaluations.ifbench, 2)}
+                  </dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-mercury-mute">{t('gpqa')}</dt>
+                  <dd className="font-mono text-mercury">
+                    {formatScore(display.evaluations.gpqa, 2)}
+                  </dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-mercury-mute">{t('hle')}</dt>
+                  <dd className="font-mono text-mercury">
+                    {formatScore(display.evaluations.hle, 2)}
                   </dd>
                 </div>
               </>
@@ -218,7 +266,7 @@ export function ModelPage() {
             <div>
               <p className="text-xs text-mercury-mute">{t('score')}</p>
               <p className="rank-metal font-display text-4xl">
-                {formatScore(model.score, isMedia ? 0 : task === 'agents' ? 2 : 1)}
+                {formatScore(model.score, scoreDigits(task))}
               </p>
             </div>
             <div>

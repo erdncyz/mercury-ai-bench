@@ -3,8 +3,10 @@ import {
   Code,
   ImageSquare,
   Lightning,
+  ListChecks,
   MathOperations,
   Robot,
+  TextAlignLeft,
   Waveform,
 } from '@phosphor-icons/react'
 import { motion } from 'motion/react'
@@ -18,6 +20,8 @@ const TASK_ICONS: Record<TaskId, Icon> = {
   agents: Robot,
   math: MathOperations,
   intelligence: Brain,
+  longcontext: TextAlignLeft,
+  instruction: ListChecks,
   image: ImageSquare,
   speech: Waveform,
   speed: Lightning,
@@ -44,8 +48,8 @@ export function TaskPicker({
       <div
         className={`grid gap-2 ${
           compact
-            ? 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-7'
-            : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+            ? 'grid-cols-3 sm:grid-cols-5 lg:grid-cols-9'
+            : 'grid-cols-1 sm:grid-cols-3'
         }`}
         role="tablist"
         aria-label={t('chooseTask')}

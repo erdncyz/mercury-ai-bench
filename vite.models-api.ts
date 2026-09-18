@@ -6,7 +6,7 @@ const PRIMARY_URL = 'https://artificialanalysis.ai/api/v2/data/llms/models'
 const FREE_URL = 'https://artificialanalysis.ai/api/v2/language/models/free'
 const IMAGE_URL = 'https://artificialanalysis.ai/api/v2/data/media/text-to-image'
 const SPEECH_URL = 'https://artificialanalysis.ai/api/v2/data/media/text-to-speech'
-const CACHE_TTL_MS = 30 * 60 * 1000
+const CACHE_TTL_MS = 10 * 60 * 1000
 
 type Cache = { body: string; expiresAt: number } | null
 let cache: Cache = null
@@ -131,7 +131,7 @@ export function modelsApiPlugin(): Plugin {
               image: fallback.image ?? [],
               speech: fallback.speech ?? [],
               data: fallback.data ?? fallback.language ?? fallback,
-              fetchedAt: new Date().toISOString(),
+              fetchedAt: fallback.fetchedAt ?? new Date().toISOString(),
               source: 'fallback',
             }),
           )
@@ -174,7 +174,7 @@ export function modelsApiPlugin(): Plugin {
             image: fallback.image ?? [],
             speech: fallback.speech ?? [],
             data: fallback.data ?? fallback.language ?? fallback,
-            fetchedAt: new Date().toISOString(),
+            fetchedAt: fallback.fetchedAt ?? new Date().toISOString(),
             source: 'fallback',
           }),
         )

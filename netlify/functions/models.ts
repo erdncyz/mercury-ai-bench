@@ -6,7 +6,7 @@ type CacheEntry = {
   expiresAt: number
 }
 
-const CACHE_TTL_MS = 30 * 60 * 1000
+const CACHE_TTL_MS = 10 * 60 * 1000
 let memoryCache: CacheEntry | null = null
 
 const PRIMARY_URL = 'https://artificialanalysis.ai/api/v2/data/llms/models'
@@ -20,7 +20,7 @@ function corsHeaders() {
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Content-Type': 'application/json',
-    'Cache-Control': 'public, max-age=60, s-maxage=1800',
+    'Cache-Control': 'public, max-age=60, s-maxage=600, stale-while-revalidate=600',
   }
 }
 
@@ -109,6 +109,7 @@ function fallbackPayload() {
     image?: unknown[]
     speech?: unknown[]
     data?: unknown[]
+    fetchedAt?: string
   }
   const language = fb.language ?? fb.data ?? (Array.isArray(fallbackModels) ? fallbackModels : [])
   const image = fb.image ?? []
@@ -118,7 +119,7 @@ function fallbackPayload() {
     image,
     speech,
     data: [...language, ...image, ...speech],
-    fetchedAt: new Date().toISOString(),
+    fetchedAt: fb.fetchedAt ?? new Date().toISOString(),
     source: 'fallback' as const,
   }
 }
@@ -161,7 +162,6 @@ export default async (req: Request, _context: Context) => {
       JSON.stringify({
         ...cached,
         source: memoryCache ? 'cache' : 'fallback',
-        fetchedAt: new Date().toISOString(),
       }),
       { status: 200, headers: corsHeaders() },
     )

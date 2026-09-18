@@ -1,24 +1,9 @@
 import { motion, useReducedMotion } from 'motion/react'
 import { useI18n } from '../../i18n/I18nProvider'
-import { median, normalizeSkill, skillProfile } from '../../lib/charts'
+import { median, normalizeSkill, polar, radarPolygon as polygon, skillProfile } from '../../lib/charts'
 import { cinemaEase } from '../../lib/motion'
 import type { MessageKey } from '../../i18n/messages'
 import type { RankedModel } from '../../types/models'
-
-function polar(cx: number, cy: number, r: number, angle: number) {
-  const rad = (Math.PI / 180) * angle
-  return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)] as const
-}
-
-function polygon(values: number[], cx: number, cy: number, r: number) {
-  const step = 360 / values.length
-  return values
-    .map((value, i) => {
-      const [x, y] = polar(cx, cy, (value / 100) * r, -90 + i * step)
-      return `${x},${y}`
-    })
-    .join(' ')
-}
 
 export function SkillCharts({
   model,

@@ -15,6 +15,7 @@ import {
   formatMediaPrice,
   formatScore,
   formatUsd,
+  scoreDigits,
   shortModelName,
 } from '../../lib/ranking'
 import type { RankedModel, TaskId } from '../../types/models'
@@ -161,7 +162,7 @@ export function FrontierChart({
       const score = yMin + t * (yMax - yMin)
       return {
         y: PAD.t + (1 - t) * innerH,
-        label: formatScore(score, score >= 20 ? 0 : 1),
+        label: formatScore(score, score >= 20 ? 0 : Math.max(1, scoreDigits(task))),
       }
     })
 
@@ -382,7 +383,7 @@ export function FrontierChart({
                   : ''}
               </p>
               <p className="mt-1.5 font-mono text-cyan">
-                {t('score')} {formatScore(hoverPoint.model.score, 1)} ·{' '}
+                {t('score')} {formatScore(hoverPoint.model.score, scoreDigits(task))} ·{' '}
                 {priceLabel(hoverPoint.model, task)}
               </p>
               {hoverPoint.model.valueScore > 0 && (

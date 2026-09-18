@@ -4,7 +4,7 @@ import { motion } from 'motion/react'
 import { useI18n } from '../i18n/I18nProvider'
 import { creatorColor } from '../lib/creatorColors'
 import { fadeUp, hoverLift, staggerFast } from '../lib/motion'
-import { formatScore, formatUsd, shortModelName } from '../lib/ranking'
+import { formatScore, formatUsd, scoreDigits, shortModelName } from '../lib/ranking'
 import type { RankedModel, TaskId } from '../types/models'
 
 export function TopTeaser({
@@ -65,14 +65,7 @@ export function TopTeaser({
                 <div className="mt-auto flex items-center justify-between border-t border-white/8 pt-3 font-mono text-xs">
                   <span className="text-mercury-dim">
                     {t('score')}{' '}
-                    {formatScore(
-                      model.score,
-                      task === 'image' || task === 'speech'
-                        ? 0
-                        : task === 'agents'
-                          ? 2
-                          : 1,
-                    )}
+                    {formatScore(model.score, scoreDigits(task))}
                   </span>
                   <span className="text-cyan">
                     {task === 'image' || task === 'speech'

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { ScoreBar } from './charts/ScoreBar'
+import { FavoriteButton } from './FavoriteButton'
 import { useI18n } from '../i18n/I18nProvider'
 import { creatorColor } from '../lib/creatorColors'
 import { fadeIn } from '../lib/motion'
@@ -9,6 +10,8 @@ import {
   formatScore,
   formatSpeed,
   formatUsd,
+  isNewRelease,
+  scoreDigits,
 } from '../lib/ranking'
 import type { RankedModel, TaskId } from '../types/models'
 
@@ -64,14 +67,23 @@ export function LeaderboardTable({
   models,
   task,
   shimmerKey,
+  selected,
+  onToggleSelect,
+  monthlyRequests = 0,
 }: {
   models: RankedModel[]
   task: TaskId
   shimmerKey: string
+  selected?: Set<string>
+  onToggleSelect?: (slug: string) => void
+  monthlyRequests?: number
 }) {
   const { t } = useI18n()
   const media = isMediaTask(task)
   const maxScore = Math.max(...models.map((m) => m.score), 1)
+  const digits = scoreDigits(task)
+  const selectable = Boolean(onToggleSelect)
+  const showMonthly = !media && monthlyRequests > 0
 
   if (models.length === 0) {
     return (
@@ -93,6 +105,7 @@ export function LeaderboardTable({
         <table className="w-full min-w-[900px] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-white/8 text-[11px] uppercase tracking-[0.16em] text-mercury-mute">
+              {selectable && <th className="w-10 px-3 py-3" aria-label={t('compare')} />}
               <th className="px-4 py-3 font-medium">{t('rank')}</th>
               <th className="px-4 py-3 font-medium">{t('model')}</th>
               <th className="px-4 py-3 font-medium">
@@ -109,25 +122,47 @@ export function LeaderboardTable({
                 </>
               )}
               <th className="px-4 py-3 font-medium">{t('requestCost')}</th>
+              {showMonthly && <th className="px-4 py-3 font-medium">{t('monthlyCost')}</th>}
               <th className="px-4 py-3 font-medium">{t('value')}</th>
+              <th className="w-10 px-2 py-3" aria-label={t('favorites')} />
             </tr>
           </thead>
           <tbody>
             {models.map((model, index) => (
               <tr
                 key={model.id}
-                className="border-b border-white/6 transition hover:bg-cyan/[0.05]"
+                className={`border-b border-white/6 transition hover:bg-cyan/[0.05] ${
+                  selected?.has(model.slug) ? 'bg-cyan/[0.06]' : ''
+                }`}
               >
+                {selectable && (
+                  <td className="px-3 py-3">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-cyan"
+                      checked={selected?.has(model.slug) ?? false}
+                      onChange={() => onToggleSelect?.(model.slug)}
+                      aria-label={`${t('compare')}: ${model.name}`}
+                    />
+                  </td>
+                )}
                 <td className="px-4 py-3">
                   <span className="rank-metal font-display text-xl">{model.rank}</span>
                 </td>
                 <td className="px-4 py-3">
-                  <Link
-                    to={`/model/${model.slug}?task=${task}`}
-                    className="font-medium text-mercury hover:text-cyan"
-                  >
-                    {model.name}
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      to={`/model/${model.slug}?task=${task}`}
+                      className="font-medium text-mercury hover:text-cyan"
+                    >
+                      {model.name}
+                    </Link>
+                    {isNewRelease(model) && (
+                      <span className="rounded-full border border-cyan/40 bg-cyan/10 px-1.5 py-px font-mono text-[9px] uppercase tracking-wider text-cyan">
+                        {t('newBadge')}
+                      </span>
+                    )}
+                  </div>
                   <div className="mt-0.5 flex items-center gap-1.5 text-xs text-mercury-mute">
                     <span
                       className="inline-block h-1.5 w-1.5 rounded-full"
@@ -140,7 +175,7 @@ export function LeaderboardTable({
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <span className="w-10 font-mono text-mercury-dim">
-                      {formatScore(model.score, media ? 0 : task === 'agents' ? 2 : 1)}
+                      {formatScore(model.score, digits)}
                     </span>
                     <ScoreBar value={model.score} max={maxScore} delay={Math.min(index * 0.02, 0.4)} />
                   </div>
@@ -171,8 +206,20 @@ export function LeaderboardTable({
                     4,
                   )}
                 </td>
+                {showMonthly && (
+                  <td className="px-4 py-3 font-mono text-mercury">
+                    {formatUsd(
+                      Number.isFinite(model.requestCost)
+                        ? model.requestCost * monthlyRequests
+                        : null,
+                    )}
+                  </td>
+                )}
                 <td className="px-4 py-3 font-mono text-mercury-dim">
                   {model.valueScore > 0 ? formatScore(model.valueScore, 2) : '—'}
+                </td>
+                <td className="px-2 py-3">
+                  <FavoriteButton slug={model.slug} />
                 </td>
               </tr>
             ))}
