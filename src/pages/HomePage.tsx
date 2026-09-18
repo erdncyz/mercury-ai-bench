@@ -6,6 +6,7 @@ import { RankBars } from '../components/charts/RankBars'
 import { MagneticLink } from '../components/MagneticLink'
 import { MercuryOrb } from '../components/MercuryOrb'
 import { PageShell, SkeletonBlock } from '../components/PageShell'
+import { PulseTeaser } from '../components/PulseTeaser'
 import { StatStrip } from '../components/StatStrip'
 import { TaskPicker } from '../components/TaskPicker'
 import { TopTeaser } from '../components/TopTeaser'
@@ -96,6 +97,7 @@ export function HomePage() {
             <BestFpCard models={bestFp} task={task} />
           </div>
           <TopTeaser models={ranked} task={task} />
+          <PulseTeaser />
         </>
       )}
     </PageShell>

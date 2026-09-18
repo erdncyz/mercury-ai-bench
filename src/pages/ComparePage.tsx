@@ -246,22 +246,6 @@ export function ComparePage() {
                     placeholder={t('compareAdd')}
                     className="w-full rounded-lg border border-white/8 bg-ink py-2 pl-9 pr-3 text-sm text-mercury outline-none placeholder:text-mercury-mute focus:border-cyan/40"
                   />
-                  {suggestions.length > 0 && (
-                    <ul className="panel absolute left-0 right-0 top-full z-20 mt-1 max-h-72 overflow-auto rounded-xl p-1">
-                      {suggestions.map((m) => (
-                        <li key={m.id}>
-                          <button
-                            type="button"
-                            onClick={() => add(m)}
-                            className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-mercury hover:bg-cyan/10"
-                          >
-                            <span>{m.name}</span>
-                            <span className="text-xs text-mercury-mute">{m.model_creator.name}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
                 </div>
               ) : (
                 <span className="font-mono text-[11px] text-mercury-mute">{t('compareMax')}</span>
@@ -276,11 +260,25 @@ export function ComparePage() {
                 </button>
               )}
             </div>
+            {suggestions.length > 0 && (
+              <ul className="mt-2 max-h-72 overflow-auto rounded-xl border border-white/8 bg-ink p-1">
+                {suggestions.map((m) => (
+                  <li key={m.id}>
+                    <button
+                      type="button"
+                      onClick={() => add(m)}
+                      className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-mercury hover:bg-cyan/10"
+                    >
+                      <span>{m.name}</span>
+                      <span className="text-xs text-mercury-mute">{m.model_creator.name}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
-          {selected.length === 0 ? (
-            <p className="panel rounded-2xl p-8 text-center text-mercury-mute">{t('compareEmpty')}</p>
-          ) : (
+          {selected.length > 0 ? (
             <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
               {selected.every((m) => m.kind === 'language') && <CompareRadar models={selected} />}
 
@@ -343,6 +341,10 @@ export function ComparePage() {
                 </div>
               </section>
             </div>
+          ) : suggestions.length > 0 ? null : query.trim() ? (
+            <p className="panel rounded-2xl p-8 text-center text-mercury-mute">{t('noResults')}</p>
+          ) : (
+            <p className="panel rounded-2xl p-8 text-center text-mercury-mute">{t('compareEmpty')}</p>
           )}
         </>
       )}

@@ -4,6 +4,7 @@ import { BenchPage } from './pages/BenchPage'
 import { ComparePage } from './pages/ComparePage'
 import { HomePage } from './pages/HomePage'
 import { ModelPage } from './pages/ModelPage'
+import { PulsePage } from './pages/PulsePage'
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/bench" element={<BenchPage />} />
           <Route path="/compare" element={<ComparePage />} />
+          <Route path="/pulse" element={<PulsePage />} />
           <Route path="/model/:slug" element={<ModelPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
