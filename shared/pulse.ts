@@ -22,6 +22,10 @@ export interface RepoItem {
   pushedAt: string | null
   createdAt: string | null
   avatar: string | null
+  /** Stars gained in the trending period (github.com/trending only). */
+  starsPeriod?: number
+  /** Heuristic: looks AI/agent related (trending lists are not pre-filtered). */
+  ai?: boolean
 }
 
 export interface PulsePayload {
@@ -31,7 +35,8 @@ export interface PulsePayload {
     skills: RepoItem[]
     agents: RepoItem[]
     mcp: RepoItem[]
-    rising: RepoItem[]
+    trendingDaily: RepoItem[]
+    trendingWeekly: RepoItem[]
   }
   fetchedAt: string
   source: 'live' | 'cache'
@@ -60,12 +65,38 @@ const HN_AI_PATTERN =
   /\b(AI|A\.I\.|LLMs?|GPT[-\w]*|ChatGPT|Claude|Gemini|Llama|Mistral|OpenAI|Anthropic|DeepMind|Copilot|Cursor|(?:AI|coding|LLM|autonomous) agents?|agentic|MCP|transformers?|diffusion|RAG|fine-?tun\w*|inference|machine learning|neural|foundation model|frontier model)\b/i
 const HF_PAPERS_URL = 'https://huggingface.co/api/daily_papers?limit=12'
 
-// GitHub search rejects OR across qualifiers (422), so one topic per bucket.
-const GH_QUERIES: { key: keyof PulsePayload['repos']; q: string }[] = [
-  { key: 'skills', q: 'topic:agent-skills' },
-  { key: 'agents', q: 'topic:ai-agents' },
-  { key: 'mcp', q: 'topic:mcp-server' },
-]
+// Many top repos carry no topics (gstack, gbrain) or different ones (hermes: ai-agent, graphify: mcp/skills),
+// so each bucket merges several topic + keyword queries. GitHub rejects OR across qualifiers, hence separate calls.
+// The first query of each bucket is the keyless fallback (10 req/min without a token).
+const GH_BUCKETS: Record<'skills' | 'agents' | 'mcp', string[]> = {
+  skills: [
+    'topic:agent-skills',
+    'topic:claude-skills',
+    'topic:openclaw-skills',
+    '"claude code" OR skills OR skill in:name,description,topics stars:>1000',
+    'openclaw OR hermes OR codex OR cursor in:name,description,topics stars:>1000',
+  ],
+  agents: [
+    'topic:ai-agents',
+    'topic:ai-agent',
+    'agent OR agents OR agentic OR assistant in:name,description,topics stars:>3000',
+  ],
+  mcp: [
+    'topic:mcp-server',
+    'topic:mcp',
+    'mcp OR "model context protocol" in:name,description,topics stars:>500',
+  ],
+}
+const REPO_LIMIT = 150
+const AI_REPO_PATTERN =
+  /\b(agents?|agentic|mcp|skills?|claude|llm|ai|gpt|copilot|assistant|openclaw|hermes|codex|cursor|gemini|model context|rag|prompt)\b/i
+// Popular repos that stuff AI topics for SEO but aren't agents/skills/MCP (matched by repo name).
+const REPO_DENYLIST = new Set([
+  'javaguide',
+  '30-seconds-of-code',
+  'front-end-checklist',
+  'daily_stock_analysis',
+])
 
 async function fetchText(url: string, headers: Record<string, string> = {}) {
   const res = await fetch(url, {
@@ -217,22 +248,92 @@ function toRepo(r: GhRepo): RepoItem {
     description: r.description,
     stars: r.stargazers_count,
     language: r.language,
-    topics: r.topics ?? [],
+    topics: (r.topics ?? []).slice(0, 6),
     pushedAt: r.pushed_at ?? null,
     createdAt: r.created_at ?? null,
     avatar: r.owner?.avatar_url ?? null,
   }
 }
 
-async function fetchRepos(q: string, token: string | undefined, errors: string[], label: string) {
+async function fetchRepos(q: string, token: string | undefined, errors: string[], label: string, page = 1) {
   const headers: Record<string, string> = { Accept: 'application/vnd.github+json' }
   if (token) headers.Authorization = `Bearer ${token}`
-  const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(q)}&sort=stars&order=desc&per_page=12`
+  const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(q)}&sort=stars&order=desc&per_page=100&page=${page}`
   try {
     const json = await fetchJson<{ items: GhRepo[] }>(url, headers)
     return (json.items ?? []).map(toRepo)
   } catch (err) {
     errors.push(`GitHub ${label}: ${(err as Error).message}`)
+    return []
+  }
+}
+
+function looksLikeAiRepo(r: RepoItem) {
+  if (REPO_DENYLIST.has(r.name.toLowerCase())) return false
+  return AI_REPO_PATTERN.test(`${r.name} ${r.description ?? ''} ${r.topics.join(' ')}`)
+}
+
+function mergeRepos(lists: RepoItem[][]) {
+  const byId = new Map<string, RepoItem>()
+  for (const r of lists.flat()) if (!byId.has(r.id) && looksLikeAiRepo(r)) byId.set(r.id, r)
+  return [...byId.values()].sort((a, b) => b.stars - a.stars).slice(0, REPO_LIMIT)
+}
+
+async function fetchBucket(queries: string[], token: string | undefined, errors: string[], label: string) {
+  const active = token ? queries : queries.slice(0, 1)
+  // Broad keyword queries are the ones that catch untagged repos; give them a second page.
+  const jobs = active.flatMap((q, i) => {
+    const pages = token && q.includes('in:name,description,topics') ? [1, 2] : [1]
+    return pages.map((page) => fetchRepos(q, token, errors, `${label}#${i + 1}p${page}`, page))
+  })
+  return mergeRepos(await Promise.all(jobs))
+}
+
+function parseCount(s: string | undefined) {
+  const n = Number.parseInt((s ?? '').replace(/[^\d]/g, ''), 10)
+  return Number.isFinite(n) ? n : 0
+}
+
+/** GitHub has no trending API; parse the public page. Selectors are kept loose and every field is optional. */
+export function parseTrending(html: string): RepoItem[] {
+  const articles = html.split('<article class="Box-row">').slice(1)
+  const items: RepoItem[] = []
+  for (const a of articles) {
+    const fullName = a.match(/<h2[^>]*>[\s\S]*?href="\/([^"?#]+)"/)?.[1]?.trim()
+    if (!fullName || !fullName.includes('/')) continue
+    const [owner, name] = fullName.split('/')
+    const description = a.match(/<p class="col-9[^"]*">([\s\S]*?)<\/p>/)?.[1]
+    const language = a.match(/itemprop="programmingLanguage">([^<]+)</)?.[1]?.trim() ?? null
+    // Strip the inline SVG before counting digits, otherwise path data leaks into the number.
+    const starsRaw = a.match(/href="\/[^"]+\/stargazers"[^>]*>([\s\S]*?)<\/a>/)?.[1]
+    const stars = parseCount(starsRaw ? decodeEntities(starsRaw) : undefined)
+    const starsPeriod = parseCount(a.match(/([\d,]+)\s+stars (?:today|this week|this month)/)?.[1])
+    const item: RepoItem = {
+      id: `trending-${fullName.toLowerCase()}`,
+      name,
+      fullName,
+      url: `https://github.com/${fullName}`,
+      description: description ? decodeEntities(description) : null,
+      stars,
+      language,
+      topics: [],
+      pushedAt: null,
+      createdAt: null,
+      avatar: `https://github.com/${owner}.png?size=56`,
+      starsPeriod,
+    }
+    item.ai = AI_REPO_PATTERN.test(`${item.name} ${item.description ?? ''}`)
+    items.push(item)
+  }
+  return items
+}
+
+async function fetchTrending(since: 'daily' | 'weekly', errors: string[]) {
+  try {
+    const html = await fetchText(`https://github.com/trending?since=${since}`, { Accept: 'text/html' })
+    return parseTrending(html)
+  } catch (err) {
+    errors.push(`GitHub trending ${since}: ${(err as Error).message}`)
     return []
   }
 }
@@ -253,19 +354,15 @@ function byDateDesc(a: PulseItem, b: PulseItem) {
 
 export async function fetchPulse(opts: { githubToken?: string } = {}): Promise<PulsePayload> {
   const errors: string[] = []
-  const since = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-
-  const [rss, hn, papers, skills, agents, mcp, rising] = await Promise.all([
+  const [rss, hn, papers, skills, agents, mcp, trendingDaily, trendingWeekly] = await Promise.all([
     Promise.all(RSS_FEEDS.map((f) => fetchRss(f, errors))),
     fetchHn(errors),
     fetchPapers(errors),
-    ...GH_QUERIES.map((g) => fetchRepos(g.q, opts.githubToken, errors, g.key)),
-    fetchRepos(
-      `topic:ai-agents created:>${since} stars:>100`,
-      opts.githubToken,
-      errors,
-      'rising',
-    ),
+    fetchBucket(GH_BUCKETS.skills, opts.githubToken, errors, 'skills'),
+    fetchBucket(GH_BUCKETS.agents, opts.githubToken, errors, 'agents'),
+    fetchBucket(GH_BUCKETS.mcp, opts.githubToken, errors, 'mcp'),
+    fetchTrending('daily', errors),
+    fetchTrending('weekly', errors),
   ])
 
   // Cap each RSS source so high-volume feeds don't drown the labs.
@@ -275,7 +372,7 @@ export async function fetchPulse(opts: { githubToken?: string } = {}): Promise<P
   return {
     news,
     papers: papers.slice(0, 12),
-    repos: { skills, agents, mcp, rising },
+    repos: { skills, agents, mcp, trendingDaily, trendingWeekly },
     fetchedAt: new Date().toISOString(),
     source: 'live',
     errors,

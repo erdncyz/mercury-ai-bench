@@ -10,27 +10,31 @@ import type { RankedModel, TaskId } from '../types/models'
 export function TopTeaser({
   models,
   task,
+  hideHeader = false,
 }: {
   models: RankedModel[]
   task: TaskId
+  hideHeader?: boolean
 }) {
   const { t } = useI18n()
   const top = models.slice(0, 5)
 
   return (
     <section>
-      <div className="mb-4 flex items-end justify-between gap-3">
-        <h2 className="font-display text-2xl text-mercury md:text-3xl">
-          {t('topForTask')}
-        </h2>
-        <Link
-          to={`/bench?task=${task}`}
-          className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.18em] text-cyan hover:text-mercury"
-        >
-          {t('viewFull')}
-          <ArrowRight size={14} />
-        </Link>
-      </div>
+      {!hideHeader && (
+        <div className="mb-4 flex items-end justify-between gap-3">
+          <h2 className="font-display text-2xl text-mercury md:text-3xl">
+            {t('topForTask')}
+          </h2>
+          <Link
+            to={`/bench?task=${task}`}
+            className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.18em] text-cyan hover:text-mercury"
+          >
+            {t('viewFull')}
+            <ArrowRight size={14} />
+          </Link>
+        </div>
+      )}
       <motion.ol
         className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-5"
         variants={staggerFast}

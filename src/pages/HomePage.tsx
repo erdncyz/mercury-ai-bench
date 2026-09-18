@@ -1,31 +1,31 @@
-import { ArrowRight } from '@phosphor-icons/react'
+import { ArrowRight, ChartBar, GitBranch, Newspaper, Plugs, Scales } from '@phosphor-icons/react'
 import { useMemo, useState } from 'react'
-import { BestFpCard } from '../components/BestFpCard'
-import { FrontierChart } from '../components/charts/FrontierChart'
-import { RankBars } from '../components/charts/RankBars'
+import { ComparePanel } from '../components/ComparePanel'
 import { MagneticLink } from '../components/MagneticLink'
 import { MercuryOrb } from '../components/MercuryOrb'
 import { PageShell, SkeletonBlock } from '../components/PageShell'
-import { PulseTeaser } from '../components/PulseTeaser'
+import { PulseMcpPanel, PulseNewsPanel, PulseReposPanel } from '../components/PulsePanels'
+import { SectionHeader } from '../components/SectionHeader'
 import { StatStrip } from '../components/StatStrip'
 import { TaskPicker } from '../components/TaskPicker'
 import { TopTeaser } from '../components/TopTeaser'
 import { useModels } from '../hooks/useModels'
+import { usePulse } from '../hooks/usePulse'
 import { useI18n } from '../i18n/I18nProvider'
 import { paretoFrontier } from '../lib/charts'
-import { bestValueModels, rankModels } from '../lib/ranking'
+import { rankModels } from '../lib/ranking'
 import type { TaskId } from '../types/models'
 
 export function HomePage() {
   const { t } = useI18n()
   const { models, data, loading, error } = useModels()
+  const pulse = usePulse()
   const [task, setTask] = useState<TaskId>('coding')
 
   const ranked = useMemo(
     () => rankModels(models, task, 'score'),
     [models, task],
   )
-  const bestFp = useMemo(() => bestValueModels(ranked, 3), [ranked])
   const frontier = useMemo(() => paretoFrontier(ranked, task), [ranked, task])
   const creators = useMemo(
     () => new Set(ranked.map((m) => m.model_creator.name)).size,
@@ -63,43 +63,91 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="mb-8">
-        <TaskPicker value={task} onChange={setTask} />
-      </section>
-
       {loading ? (
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <SkeletonBlock className="h-24" />
-            <SkeletonBlock className="h-24" />
-            <SkeletonBlock className="h-24" />
-            <SkeletonBlock className="h-24" />
-          </div>
-          <SkeletonBlock className="h-80" />
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <SkeletonBlock className="h-24" />
+          <SkeletonBlock className="h-24" />
+          <SkeletonBlock className="h-24" />
+          <SkeletonBlock className="h-24" />
         </div>
       ) : (
-        <>
-          <div className="mb-8">
-            <StatStrip
-              models={ranked.length}
-              creators={creators}
-              frontier={frontier.length}
-              live={data?.source === 'live'}
-            />
-          </div>
-
-          <div className="mb-8 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-            <FrontierChart models={ranked} task={task} />
-            <RankBars models={ranked} task={task} />
-          </div>
-
-          <div className="mb-8">
-            <BestFpCard models={bestFp} task={task} />
-          </div>
-          <TopTeaser models={ranked} task={task} />
-          <PulseTeaser />
-        </>
+        <StatStrip
+          models={ranked.length}
+          creators={creators}
+          frontier={frontier.length}
+          live={data?.source === 'live'}
+        />
       )}
+
+      <section className="mt-14">
+        <SectionHeader
+          index="01"
+          icon={ChartBar}
+          title={t('navBench')}
+          description={t('homeBenchDesc')}
+          to={`/bench?task=${task}`}
+          cta={t('viewFull')}
+        />
+        <div className="mb-5">
+          <TaskPicker value={task} onChange={setTask} compact />
+        </div>
+        {loading ? <SkeletonBlock className="h-44" /> : <TopTeaser models={ranked} task={task} hideHeader />}
+      </section>
+
+      <section className="mt-14">
+        <SectionHeader
+          index="02"
+          icon={Scales}
+          title={t('navCompare')}
+          description={t('homeCompareDesc')}
+          to={`/compare?task=${task}`}
+          cta={t('openCompare')}
+        />
+        {loading ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            <SkeletonBlock className="h-48" />
+            <SkeletonBlock className="h-48" />
+          </div>
+        ) : (
+          <ComparePanel ranked={ranked} models={models} task={task} />
+        )}
+      </section>
+
+      <section className="mt-14">
+        <SectionHeader
+          index="03"
+          icon={Newspaper}
+          title={t('navNews')}
+          description={t('homeNewsDesc')}
+          to="/news"
+          cta={t('openNews')}
+        />
+        <PulseNewsPanel data={pulse.data} loading={pulse.loading} />
+      </section>
+
+      <section className="mt-14">
+        <SectionHeader
+          index="04"
+          icon={GitBranch}
+          title={t('navSkills')}
+          description={t('homeReposDesc')}
+          to="/skills"
+          cta={t('openSkills')}
+        />
+        <PulseReposPanel data={pulse.data} loading={pulse.loading} />
+      </section>
+
+      <section className="mt-14">
+        <SectionHeader
+          index="05"
+          icon={Plugs}
+          title={t('navMcp')}
+          description={t('mcpHint')}
+          to="/mcp"
+          cta={t('openMcp')}
+        />
+        <PulseMcpPanel data={pulse.data} loading={pulse.loading} />
+      </section>
     </PageShell>
   )
 }

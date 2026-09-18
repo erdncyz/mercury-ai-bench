@@ -1,4 +1,4 @@
-import { ArrowSquareOut, ChatCircle, GitFork, Star } from '@phosphor-icons/react'
+import { ArrowSquareOut, ChatCircle, GitFork, Star, TrendUp } from '@phosphor-icons/react'
 import { useI18n } from '../i18n/I18nProvider'
 import type { PulseItem, RepoItem } from '../hooks/usePulse'
 
@@ -73,7 +73,14 @@ export function RepoCard({ repo }: { repo: RepoItem }) {
           <GitFork size={20} className="mt-1 shrink-0 text-mercury-mute" />
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-mercury group-hover:text-cyan">{repo.fullName}</p>
+          <p className="flex items-center gap-2 text-sm font-medium text-mercury group-hover:text-cyan">
+            <span className="truncate">{repo.fullName}</span>
+            {repo.ai && (
+              <span className="shrink-0 rounded-full border border-cyan/30 px-1.5 py-px font-mono text-[9px] uppercase tracking-wider text-cyan">
+                AI
+              </span>
+            )}
+          </p>
           <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-mercury-mute">{repo.description ?? '—'}</p>
         </div>
       </div>
@@ -81,6 +88,11 @@ export function RepoCard({ repo }: { repo: RepoItem }) {
         <span className="inline-flex items-center gap-1 text-amber-200">
           <Star size={12} weight="fill" /> {formatStars(repo.stars)}
         </span>
+        {repo.starsPeriod != null && repo.starsPeriod > 0 && (
+          <span className="inline-flex items-center gap-0.5 text-cyan">
+            <TrendUp size={12} /> +{formatStars(repo.starsPeriod)}
+          </span>
+        )}
         {repo.language && <span>{repo.language}</span>}
         {repo.pushedAt && (
           <span className="ml-auto">
