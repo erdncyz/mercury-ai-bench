@@ -12,12 +12,14 @@ import { useFavorites } from '../hooks/useFavorites'
 import { useModels } from '../hooks/useModels'
 import { useI18n } from '../i18n/I18nProvider'
 import { downloadText, rankedToCsv } from '../lib/export'
-import { bestValueModels, rankModels, TASK_IDS } from '../lib/ranking'
+import { bestValueModels, modelsForTask, rankModels, TASK_IDS } from '../lib/ranking'
 import type { SortKey, TaskId } from '../types/models'
 
 const SORT_IDS: SortKey[] = ['score', 'price', 'speed', 'value']
 const RELEASE_WINDOWS = ['all', '3', '6', '12'] as const
 type ReleaseWindow = (typeof RELEASE_WINDOWS)[number]
+const WEIGHT_FILTERS = ['all', 'open', 'closed'] as const
+type WeightFilter = (typeof WEIGHT_FILTERS)[number]
 const MAX_COMPARE = 4
 
 function parseTask(value: string | null): TaskId {
@@ -30,6 +32,10 @@ function parseSort(value: string | null): SortKey {
 
 function parseWindow(value: string | null): ReleaseWindow {
   return RELEASE_WINDOWS.includes(value as ReleaseWindow) ? (value as ReleaseWindow) : 'all'
+}
+
+function parseWeights(value: string | null): WeightFilter {
+  return WEIGHT_FILTERS.includes(value as WeightFilter) ? (value as WeightFilter) : 'all'
 }
 
 function releasedAfter(months: number): number {
@@ -47,6 +53,7 @@ export function BenchPage() {
   const task = parseTask(params.get('task'))
   const sort = parseSort(params.get('sort'))
   const releaseWindow = parseWindow(params.get('since'))
+  const weights = parseWeights(params.get('weights'))
   const favoritesOnly = params.get('fav') === '1'
   const maxPrice = Number.parseFloat(params.get('max') ?? '') || 0
   const [query, setQuery] = useState('')
@@ -55,18 +62,17 @@ export function BenchPage() {
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
 
   const creators = useMemo(() => {
-    const pool =
-      task === 'image'
-        ? models.filter((m) => m.kind === 'image')
-        : task === 'speech'
-          ? models.filter((m) => m.kind === 'speech')
-          : models.filter((m) => m.kind === 'language')
+    let pool = modelsForTask(models, task)
+    if (weights === 'open') pool = pool.filter((m) => m.open_weights)
+    if (weights === 'closed') pool = pool.filter((m) => !m.open_weights)
     const set = new Set(pool.map((m) => m.model_creator.name))
     return [...set].sort((a, b) => a.localeCompare(b))
-  }, [models, task])
+  }, [models, task, weights])
 
   const ranked = useMemo(() => {
     let list = rankModels(models, task, sort, cost.inputTokens, cost.outputTokens)
+    if (weights === 'open') list = list.filter((m) => m.open_weights)
+    if (weights === 'closed') list = list.filter((m) => !m.open_weights)
     if (creator !== 'all') {
       list = list.filter((m) => m.model_creator.name === creator)
     }
@@ -96,7 +102,7 @@ export function BenchPage() {
       )
     }
     return list
-  }, [models, task, sort, creator, query, cost, favoritesOnly, favorites, releaseWindow, maxPrice])
+  }, [models, task, sort, creator, query, cost, favoritesOnly, favorites, releaseWindow, maxPrice, weights])
 
   const bestFp = useMemo(() => bestValueModels(ranked, 3), [ranked])
   const isMedia = task === 'image' || task === 'speech'
@@ -212,6 +218,24 @@ export function BenchPage() {
               {creators.map((name) => (
                 <option key={name} value={name}>
                   {name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={weights}
+              onChange={(e) => {
+                setCreator('all')
+                updateParams((p) => {
+                  if (e.target.value === 'all') p.delete('weights')
+                  else p.set('weights', e.target.value)
+                })
+              }}
+              className={control}
+              aria-label={t('weightsOpen')}
+            >
+              {WEIGHT_FILTERS.map((id) => (
+                <option key={id} value={id}>
+                  {id === 'open' ? t('weightsOpen') : id === 'closed' ? t('weightsClosed') : t('weightsAll')}
                 </option>
               ))}
             </select>

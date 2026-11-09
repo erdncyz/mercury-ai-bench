@@ -1,5 +1,6 @@
 import type { AiModel, ModelKind } from '../types/models'
 import { lookupMediaPrice } from '../data/media-prices'
+import { resolveOpenWeights } from './openWeights'
 
 function asNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
@@ -42,13 +43,16 @@ function performanceOf(raw: Record<string, unknown>) {
 export function normalizeLanguageModel(raw: Record<string, unknown>): AiModel {
   const evaluations = (raw.evaluations ?? {}) as Record<string, unknown>
   const pricing = (raw.pricing ?? {}) as Record<string, unknown>
+  const name = String(raw.name)
+  const modelCreator = creator(raw.model_creator as Record<string, unknown>)
   return {
     id: String(raw.id),
-    name: String(raw.name),
+    name,
     slug: String(raw.slug ?? raw.id),
     kind: 'language',
     release_date: raw.release_date ? String(raw.release_date) : null,
-    model_creator: creator(raw.model_creator as Record<string, unknown>),
+    model_creator: modelCreator,
+    open_weights: resolveOpenWeights(raw, name, modelCreator.name),
     evaluations: {
       artificial_analysis_intelligence_index: asNumber(
         evaluations.artificial_analysis_intelligence_index,
@@ -97,13 +101,15 @@ export function normalizeMediaModel(
   const hint = lookupMediaPrice(name, slug, kind)
   const elo = asNumber(raw.elo)
 
+  const modelCreator = creator(raw.model_creator as Record<string, unknown>)
   return {
     id: String(raw.id),
     name,
     slug,
     kind,
     release_date: raw.release_date ? String(raw.release_date) : null,
-    model_creator: creator(raw.model_creator as Record<string, unknown>),
+    model_creator: modelCreator,
+    open_weights: resolveOpenWeights(raw, name, modelCreator.name),
     evaluations: {
       artificial_analysis_intelligence_index: null,
       artificial_analysis_coding_index: null,

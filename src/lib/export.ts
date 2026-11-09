@@ -20,6 +20,7 @@ export function rankedToCsv(models: RankedModel[]): string {
     'request_cost',
     'value',
     'release_date',
+    'open_weights',
   ]
   const rows = models.map((m) => [
     m.rank,
@@ -34,6 +35,7 @@ export function rankedToCsv(models: RankedModel[]): string {
     m.requestCost,
     m.valueScore > 0 ? m.valueScore : null,
     m.release_date,
+    m.open_weights ? 'open' : 'closed',
   ])
   return [header, ...rows].map((r) => r.map(cell).join(',')).join('\n')
 }

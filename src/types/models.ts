@@ -68,6 +68,8 @@ export interface AiModel {
   elo?: number | null
   arena_rank?: number | null
   appearances?: number | null
+  /** Weights are publicly released. Explicit API flags win; otherwise this is inferred. */
+  open_weights: boolean
 }
 
 export interface ModelsResponse {

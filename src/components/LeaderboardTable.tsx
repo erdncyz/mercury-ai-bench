@@ -162,6 +162,11 @@ export function LeaderboardTable({
                         {t('newBadge')}
                       </span>
                     )}
+                    {model.open_weights && (
+                      <span className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-1.5 py-px font-mono text-[9px] uppercase tracking-wider text-emerald-200">
+                        {t('openBadge')}
+                      </span>
+                    )}
                   </div>
                   <div className="mt-0.5 flex items-center gap-1.5 text-xs text-mercury-mute">
                     <span

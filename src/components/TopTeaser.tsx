@@ -64,7 +64,12 @@ export function TopTeaser({
                     style={{ background: creatorColor(model.model_creator.name) }}
                     aria-hidden
                   />
-                  {model.model_creator.name}
+                  <span className="truncate">{model.model_creator.name}</span>
+                  {model.open_weights && (
+                    <span className="shrink-0 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-1.5 py-px font-mono text-[9px] uppercase tracking-wider text-emerald-200">
+                      {t('openBadge')}
+                    </span>
+                  )}
                 </p>
                 <div className="mt-auto flex items-center justify-between border-t border-white/8 pt-3 font-mono text-xs">
                   <span className="text-mercury-dim">

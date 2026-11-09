@@ -101,6 +101,15 @@ export function ModelPage() {
               {t('newBadge')}
             </span>
           )}
+          <span
+            className={`rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider ${
+              display.open_weights
+                ? 'border-emerald-300/30 bg-emerald-300/10 text-emerald-200'
+                : 'border-white/10 text-mercury-mute'
+            }`}
+          >
+            {display.open_weights ? t('weightsOpen') : t('weightsClosed')}
+          </span>
         </div>
         {model && pct != null && (
           <p className="mt-3 font-mono text-sm text-cyan">
