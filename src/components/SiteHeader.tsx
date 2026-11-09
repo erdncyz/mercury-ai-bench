@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { ChartBar, GitBranch, House, Newspaper, Plugs, Scales } from '@phosphor-icons/react'
+import { ChartBar, ChatTeardropText, GitBranch, House, Newspaper, Plugs, Scales } from '@phosphor-icons/react'
 import type { Icon } from '@phosphor-icons/react'
 import { useI18n } from '../i18n/I18nProvider'
 import type { Locale, MessageKey } from '../i18n/messages'
@@ -11,6 +11,7 @@ const NAV: { to: string; icon: Icon; label: MessageKey }[] = [
   { to: '/news', icon: Newspaper, label: 'navNews' },
   { to: '/skills', icon: GitBranch, label: 'navSkills' },
   { to: '/mcp', icon: Plugs, label: 'navMcp' },
+  { to: '/prompts', icon: ChatTeardropText, label: 'navPrompts' },
 ]
 
 export function SiteHeader() {
@@ -19,12 +20,17 @@ export function SiteHeader() {
   return (
     <header className="glass-header sticky top-0 z-30 border-b border-white/8">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-3.5 md:px-8">
-        <NavLink to="/" className="group flex shrink-0 items-baseline gap-2">
-          <span className="font-display text-2xl tracking-tight text-mercury md:text-[1.75rem]">
-            {t('brand')}
+        <NavLink to="/" className="group flex shrink-0 flex-col">
+          <span className="flex items-baseline gap-2">
+            <span className="font-display text-2xl tracking-tight text-mercury md:text-[1.75rem]">
+              {t('brand')}
+            </span>
+            <span className="hidden font-mono text-[11px] uppercase tracking-[0.22em] text-mercury-mute transition group-hover:text-cyan sm:inline">
+              {t('brandSuffix')}
+            </span>
           </span>
-          <span className="hidden font-mono text-[11px] uppercase tracking-[0.22em] text-mercury-mute transition group-hover:text-cyan sm:inline">
-            {t('brandSuffix')}
+          <span className="hidden font-mono text-[10px] tracking-[0.08em] text-red-500 md:block">
+            Developed by Erdinç Yılmaz
           </span>
         </NavLink>
 

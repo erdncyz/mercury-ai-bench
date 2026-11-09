@@ -6,6 +6,7 @@ import { HomePage } from './pages/HomePage'
 import { McpPage } from './pages/McpPage'
 import { ModelPage } from './pages/ModelPage'
 import { NewsPage } from './pages/NewsPage'
+import { PromptsPage } from './pages/PromptsPage'
 import { SkillsPage } from './pages/SkillsPage'
 
 export default function App() {
@@ -19,6 +20,7 @@ export default function App() {
           <Route path="/news" element={<NewsPage />} />
           <Route path="/skills" element={<SkillsPage />} />
           <Route path="/mcp" element={<McpPage />} />
+          <Route path="/prompts" element={<PromptsPage />} />
           <Route path="/pulse" element={<Navigate to="/news" replace />} />
           <Route path="/model/:slug" element={<ModelPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
