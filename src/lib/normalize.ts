@@ -13,6 +13,32 @@ function creator(raw: Record<string, unknown> | undefined) {
   }
 }
 
+/** AA blended 3:1 is (3 × input + output) / 4. Free responses omit the precomputed field. */
+function blendedPrice(pricing: Record<string, unknown>): number | null {
+  const published = asNumber(pricing.price_1m_blended_3_to_1)
+  if (published != null) return published
+  const input = asNumber(pricing.price_1m_input_tokens)
+  const output = asNumber(pricing.price_1m_output_tokens)
+  if (input == null || output == null) return null
+  return (3 * input + output) / 4
+}
+
+function performanceOf(raw: Record<string, unknown>) {
+  const perf = (raw.performance ?? {}) as Record<string, unknown>
+  return {
+    median_output_tokens_per_second:
+      asNumber(perf.median_output_tokens_per_second) ??
+      asNumber(raw.median_output_tokens_per_second),
+    median_time_to_first_token_seconds:
+      asNumber(perf.median_time_to_first_token_seconds) ??
+      asNumber(raw.median_time_to_first_token_seconds),
+    median_time_to_first_answer_token:
+      asNumber(perf.median_time_to_first_answer_token_seconds) ??
+      asNumber(perf.median_time_to_first_answer_token) ??
+      asNumber(raw.median_time_to_first_answer_token),
+  }
+}
+
 export function normalizeLanguageModel(raw: Record<string, unknown>): AiModel {
   const evaluations = (raw.evaluations ?? {}) as Record<string, unknown>
   const pricing = (raw.pricing ?? {}) as Record<string, unknown>
@@ -33,6 +59,12 @@ export function normalizeLanguageModel(raw: Record<string, unknown>): AiModel {
       artificial_analysis_math_index: asNumber(
         evaluations.artificial_analysis_math_index,
       ),
+      artificial_analysis_agentic_index: asNumber(
+        evaluations.artificial_analysis_agentic_index,
+      ),
+      artificial_analysis_engineering_index: asNumber(
+        evaluations.artificial_analysis_engineering_index,
+      ),
       terminalbench_v2_1: asNumber(evaluations.terminalbench_v2_1),
       tau2: asNumber(evaluations.tau2),
       livecodebench: asNumber(evaluations.livecodebench),
@@ -48,17 +80,11 @@ export function normalizeLanguageModel(raw: Record<string, unknown>): AiModel {
       math_500: asNumber(evaluations.math_500),
     },
     pricing: {
-      price_1m_blended_3_to_1: asNumber(pricing.price_1m_blended_3_to_1),
+      price_1m_blended_3_to_1: blendedPrice(pricing),
       price_1m_input_tokens: asNumber(pricing.price_1m_input_tokens),
       price_1m_output_tokens: asNumber(pricing.price_1m_output_tokens),
     },
-    median_output_tokens_per_second: asNumber(raw.median_output_tokens_per_second),
-    median_time_to_first_token_seconds: asNumber(
-      raw.median_time_to_first_token_seconds,
-    ),
-    median_time_to_first_answer_token: asNumber(
-      raw.median_time_to_first_answer_token,
-    ),
+    ...performanceOf(raw),
   }
 }
 

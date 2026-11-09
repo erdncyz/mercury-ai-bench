@@ -47,13 +47,23 @@ export function modelsForTask(models: AiModel[], task: TaskId): AiModel[] {
   }
 }
 
+export function codingScore(model: AiModel): number | null {
+  const e = model.evaluations
+  return e.artificial_analysis_coding_index ?? e.artificial_analysis_engineering_index ?? null
+}
+
+export function agentsScore(model: AiModel): number | null {
+  const e = model.evaluations
+  return e.artificial_analysis_agentic_index ?? e.tau2 ?? e.terminalbench_v2_1 ?? null
+}
+
 export function getTaskScore(model: AiModel, task: TaskId): number | null {
   const e = model.evaluations
   switch (task) {
     case 'coding':
-      return e.artificial_analysis_coding_index
+      return codingScore(model)
     case 'agents':
-      return e.tau2 ?? e.terminalbench_v2_1 ?? null
+      return agentsScore(model)
     case 'math':
       return e.artificial_analysis_math_index
     case 'intelligence':

@@ -9,10 +9,18 @@ const targets = [
   resolve(root, 'netlify/functions/fallback-models.json'),
 ]
 
-const PRIMARY_URL = 'https://artificialanalysis.ai/api/v2/data/llms/models'
-const FREE_URL = 'https://artificialanalysis.ai/api/v2/language/models/free'
-const IMAGE_URL = 'https://artificialanalysis.ai/api/v2/data/media/text-to-image'
-const SPEECH_URL = 'https://artificialanalysis.ai/api/v2/data/media/text-to-speech'
+const LANGUAGE_URLS = [
+  'https://artificialanalysis.ai/api/v2/language/models',
+  'https://artificialanalysis.ai/api/v2/language/models/free',
+]
+const IMAGE_URLS = [
+  'https://artificialanalysis.ai/api/v2/media/text-to-image/models',
+  'https://artificialanalysis.ai/api/v2/media/text-to-image/models/free',
+]
+const SPEECH_URLS = [
+  'https://artificialanalysis.ai/api/v2/media/text-to-speech/models',
+  'https://artificialanalysis.ai/api/v2/media/text-to-speech/models/free',
+]
 
 function loadKey() {
   if (process.env.ARTIFICIAL_ANALYSIS_API_KEY) return process.env.ARTIFICIAL_ANALYSIS_API_KEY
@@ -36,17 +44,18 @@ async function fetchJson(url, apiKey) {
   return res.json()
 }
 
-async function fetchLanguage(apiKey) {
-  const primary = normalizeList(await fetchJson(PRIMARY_URL, apiKey))
-  if (primary.data.length) return primary.data
-  const all = []
-  for (let page = 1; page <= 20; page += 1) {
-    const chunk = normalizeList(await fetchJson(`${FREE_URL}?page=${page}`, apiKey))
-    if (!chunk.data.length) break
-    all.push(...chunk.data)
-    if (!chunk.hasMore) break
+async function fetchPaged(urls, apiKey) {
+  for (const url of urls) {
+    const all = []
+    for (let page = 1; page <= 20; page += 1) {
+      const chunk = normalizeList(await fetchJson(`${url}?page=${page}`, apiKey))
+      if (!chunk.data.length) break
+      all.push(...chunk.data)
+      if (!chunk.hasMore) break
+    }
+    if (all.length) return all
   }
-  return all
+  return []
 }
 
 async function main() {
@@ -57,9 +66,9 @@ async function main() {
   }
 
   const [language, image, speech] = await Promise.all([
-    fetchLanguage(apiKey),
-    fetchJson(IMAGE_URL, apiKey).then((j) => normalizeList(j).data),
-    fetchJson(SPEECH_URL, apiKey).then((j) => normalizeList(j).data),
+    fetchPaged(LANGUAGE_URLS, apiKey),
+    fetchPaged(IMAGE_URLS, apiKey),
+    fetchPaged(SPEECH_URLS, apiKey),
   ])
 
   if (!language.length) {

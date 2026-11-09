@@ -1,3 +1,4 @@
+import { agentsScore, codingScore } from './ranking'
 import type { RankedModel, TaskId } from '../types/models'
 
 export function modelPrice(model: RankedModel, task: TaskId): number | null {
@@ -62,7 +63,7 @@ export interface SkillAxis {
 }
 
 export function skillProfile(model: RankedModel): SkillAxis[] {
-  const agents = model.evaluations.tau2 ?? model.evaluations.terminalbench_v2_1
+  const agents = agentsScore(model)
   return [
     {
       id: 'intelligenceIndex',
@@ -71,7 +72,7 @@ export function skillProfile(model: RankedModel): SkillAxis[] {
     },
     {
       id: 'codingIndex',
-      value: model.evaluations.artificial_analysis_coding_index,
+      value: codingScore(model),
       max: 100,
     },
     {

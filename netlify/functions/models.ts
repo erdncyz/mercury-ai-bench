@@ -9,10 +9,20 @@ type CacheEntry = {
 const CACHE_TTL_MS = 10 * 60 * 1000
 let memoryCache: CacheEntry | null = null
 
-const PRIMARY_URL = 'https://artificialanalysis.ai/api/v2/data/llms/models'
-const FREE_URL = 'https://artificialanalysis.ai/api/v2/language/models/free'
-const IMAGE_URL = 'https://artificialanalysis.ai/api/v2/data/media/text-to-image'
-const SPEECH_URL = 'https://artificialanalysis.ai/api/v2/data/media/text-to-speech'
+// Legacy /api/v2/data/* routes returned 410 on 4 Nov 2026.
+// Pro routes are tried first; a free key falls through to the public routes.
+const LANGUAGE_URLS = [
+  'https://artificialanalysis.ai/api/v2/language/models',
+  'https://artificialanalysis.ai/api/v2/language/models/free',
+]
+const IMAGE_URLS = [
+  'https://artificialanalysis.ai/api/v2/media/text-to-image/models',
+  'https://artificialanalysis.ai/api/v2/media/text-to-image/models/free',
+]
+const SPEECH_URLS = [
+  'https://artificialanalysis.ai/api/v2/media/text-to-speech/models',
+  'https://artificialanalysis.ai/api/v2/media/text-to-speech/models/free',
+]
 
 function corsHeaders() {
   return {
@@ -48,58 +58,42 @@ async function fetchJson(url: string, apiKey: string) {
   return res.json()
 }
 
-async function fetchAllFree(apiKey: string) {
-  const all: unknown[] = []
-  let page = 1
-  let tier: string | undefined
-  for (let i = 0; i < 20; i += 1) {
-    const json = await fetchJson(`${FREE_URL}?page=${page}`, apiKey)
-    if (!json) break
-    const normalized = normalizeList(json)
-    if (!normalized.data.length) break
-    all.push(...normalized.data)
-    tier = normalized.tier ?? tier
-    if (!normalized.hasMore) break
-    page += 1
-  }
-  return all.length ? { data: all, tier } : null
-}
-
-async function fetchLanguage(apiKey: string) {
-  try {
-    const json = await fetchJson(PRIMARY_URL, apiKey)
-    if (json) {
-      const normalized = normalizeList(json)
-      if (normalized.data.length) return { data: normalized.data, tier: normalized.tier }
+async function fetchPaged(urls: string[], apiKey: string) {
+  for (const url of urls) {
+    const all: unknown[] = []
+    let page = 1
+    let tier: string | undefined
+    for (let i = 0; i < 20; i += 1) {
+      try {
+        const json = await fetchJson(`${url}?page=${page}`, apiKey)
+        if (!json) break
+        const normalized = normalizeList(json)
+        if (!normalized.data.length) break
+        all.push(...normalized.data)
+        tier = normalized.tier ?? tier
+        if (!normalized.hasMore) break
+        page += 1
+      } catch {
+        break
+      }
     }
-  } catch {
-    // fall through
+    if (all.length) return { data: all, tier }
   }
-  return fetchAllFree(apiKey)
-}
-
-async function fetchMedia(apiKey: string, url: string) {
-  try {
-    const json = await fetchJson(url, apiKey)
-    if (!json) return []
-    return normalizeList(json).data
-  } catch {
-    return []
-  }
+  return null
 }
 
 async function fetchBundle(apiKey: string) {
   const [language, image, speech] = await Promise.all([
-    fetchLanguage(apiKey),
-    fetchMedia(apiKey, IMAGE_URL),
-    fetchMedia(apiKey, SPEECH_URL),
+    fetchPaged(LANGUAGE_URLS, apiKey),
+    fetchPaged(IMAGE_URLS, apiKey),
+    fetchPaged(SPEECH_URLS, apiKey),
   ])
-  if (!language?.data.length && !image.length && !speech.length) return null
+  if (!language?.data.length && !image?.data.length && !speech?.data.length) return null
   return {
     language: language?.data ?? [],
-    image,
-    speech,
-    tier: language?.tier,
+    image: image?.data ?? [],
+    speech: speech?.data ?? [],
+    tier: language?.tier ?? image?.tier ?? speech?.tier,
   }
 }
 

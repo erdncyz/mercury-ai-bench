@@ -11,6 +11,8 @@ import type { MessageKey } from '../i18n/messages'
 import { normalizeSkill, polar, radarPolygon, skillProfile } from '../lib/charts'
 import { cinemaEase } from '../lib/motion'
 import {
+  agentsScore,
+  codingScore,
   formatScore,
   formatSpeed,
   formatUsd,
@@ -37,9 +39,9 @@ type Row = {
 
 const ROWS: Row[] = [
   { key: 'intelligenceIndex', get: (m) => m.evaluations.artificial_analysis_intelligence_index, format: (v) => formatScore(v) },
-  { key: 'codingIndex', get: (m) => m.evaluations.artificial_analysis_coding_index, format: (v) => formatScore(v) },
+  { key: 'codingIndex', get: (m) => codingScore(m), format: (v) => formatScore(v) },
   { key: 'mathIndex', get: (m) => m.evaluations.artificial_analysis_math_index, format: (v) => formatScore(v) },
-  { key: 'agentsIndex', get: (m) => m.evaluations.tau2 ?? m.evaluations.terminalbench_v2_1, format: (v) => formatScore(v, 2) },
+  { key: 'agentsIndex', get: (m) => agentsScore(m), format: (v) => formatScore(v, 2) },
   { key: 'longContextIndex', get: (m) => m.evaluations.lcr, format: (v) => formatScore(v, 2) },
   { key: 'instructionIndex', get: (m) => m.evaluations.ifbench, format: (v) => formatScore(v, 2) },
   { key: 'gpqa', get: (m) => m.evaluations.gpqa, format: (v) => formatScore(v, 2) },

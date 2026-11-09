@@ -8,6 +8,8 @@ import { PageShell, SkeletonBlock } from '../components/PageShell'
 import { useModels } from '../hooks/useModels'
 import { useI18n } from '../i18n/I18nProvider'
 import {
+  agentsScore,
+  codingScore,
   formatMediaPrice,
   formatScore,
   formatSpeed,
@@ -142,7 +144,7 @@ export function ModelPage() {
                 <div className="flex justify-between">
                   <dt className="text-mercury-mute">{t('codingIndex')}</dt>
                   <dd className="font-mono text-mercury">
-                    {formatScore(display.evaluations.artificial_analysis_coding_index)}
+                    {formatScore(codingScore(display))}
                   </dd>
                 </div>
                 <div className="flex justify-between">
@@ -154,10 +156,7 @@ export function ModelPage() {
                 <div className="flex justify-between">
                   <dt className="text-mercury-mute">{t('agentsIndex')}</dt>
                   <dd className="font-mono text-mercury">
-                    {formatScore(
-                      display.evaluations.tau2 ?? display.evaluations.terminalbench_v2_1,
-                      2,
-                    )}
+                    {formatScore(agentsScore(display), 2)}
                   </dd>
                 </div>
                 <div className="flex justify-between">
