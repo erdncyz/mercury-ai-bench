@@ -18,7 +18,7 @@ import type { TaskId } from '../types/models'
 
 export function HomePage() {
   const { t } = useI18n()
-  const { models, data, loading, error } = useModels()
+  const { models, data, loading, notice } = useModels()
   const pulse = usePulse()
   const [task, setTask] = useState<TaskId>('coding')
 
@@ -53,8 +53,8 @@ export function HomePage() {
               {t('openBench')}
               <ArrowRight size={16} weight="bold" />
             </MagneticLink>
-            {error && (
-              <span className="font-mono text-[11px] text-mercury-mute">{t('error')}</span>
+            {notice && (
+              <span className="font-mono text-[11px] text-mercury-mute">{t(notice)}</span>
             )}
           </div>
         </div>

@@ -78,6 +78,10 @@ export interface ModelsResponse {
   fetchedAt: string
   source: 'live' | 'cache' | 'fallback'
   tier?: string
+  /** Why live data could not be refreshed, when it couldn't. */
+  reason?: 'missing-key' | 'rate-limited' | 'upstream-error'
+  /** True when `cache` data is older than the refresh window because upstream failed. */
+  stale?: boolean
 }
 
 export interface CostScenario {

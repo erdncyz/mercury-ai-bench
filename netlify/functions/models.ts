@@ -1,28 +1,31 @@
 import type { Context, Config } from '@netlify/functions'
+import { getStore } from '@netlify/blobs'
 import fallbackModels from './fallback-models.json'
+import {
+  fallbackPayload,
+  fetchModels,
+  type FailureReason,
+  type ModelsPayload,
+} from '../../shared/aaModels'
 
-type CacheEntry = {
-  body: string
-  expiresAt: number
+// Free tier: 100 requests / 24h and ~6 per refresh, so refresh at most every 6h.
+const FRESH_MS = 6 * 60 * 60 * 1000
+const STORE = 'aa-models'
+
+interface Snapshot {
+  payload: ModelsPayload
+  savedAt: number
 }
 
-const CACHE_TTL_MS = 10 * 60 * 1000
-let memoryCache: CacheEntry | null = null
+interface UpstreamState {
+  freeOnly?: boolean
+  cooldownUntil?: number
+  lastReason?: FailureReason
+}
 
-// Legacy /api/v2/data/* routes returned 410 on 4 Nov 2026.
-// Pro routes are tried first; a free key falls through to the public routes.
-const LANGUAGE_URLS = [
-  'https://artificialanalysis.ai/api/v2/language/models',
-  'https://artificialanalysis.ai/api/v2/language/models/free',
-]
-const IMAGE_URLS = [
-  'https://artificialanalysis.ai/api/v2/media/text-to-image/models',
-  'https://artificialanalysis.ai/api/v2/media/text-to-image/models/free',
-]
-const SPEECH_URLS = [
-  'https://artificialanalysis.ai/api/v2/media/text-to-speech/models',
-  'https://artificialanalysis.ai/api/v2/media/text-to-speech/models/free',
-]
+let memory: Snapshot | null = null
+let memoryState: UpstreamState = {}
+let inflight: Promise<Response> | null = null
 
 function corsHeaders() {
   return {
@@ -34,88 +37,82 @@ function corsHeaders() {
   }
 }
 
-function normalizeList(raw: unknown): {
-  data: unknown[]
-  tier?: string
-  hasMore?: boolean
-} {
-  if (!raw || typeof raw !== 'object') return { data: [] }
-  const obj = raw as Record<string, unknown>
-  const data = Array.isArray(obj.data) ? obj.data : Array.isArray(raw) ? raw : []
-  const pagination = obj.pagination as { has_more?: boolean } | undefined
-  return {
-    data,
-    tier: typeof obj.tier === 'string' ? obj.tier : undefined,
-    hasMore: Boolean(pagination?.has_more),
+function json(body: unknown) {
+  return new Response(JSON.stringify(body), { status: 200, headers: corsHeaders() })
+}
+
+// Blobs can be unavailable (e.g. plain `vite` or a misconfigured site); degrade to memory.
+function store() {
+  try {
+    return getStore(STORE)
+  } catch {
+    return null
   }
 }
 
-async function fetchJson(url: string, apiKey: string) {
-  const res = await fetch(url, {
-    headers: { 'x-api-key': apiKey, Accept: 'application/json' },
-  })
-  if (!res.ok) return null
-  return res.json()
-}
-
-async function fetchPaged(urls: string[], apiKey: string) {
-  for (const url of urls) {
-    const all: unknown[] = []
-    let page = 1
-    let tier: string | undefined
-    for (let i = 0; i < 20; i += 1) {
-      try {
-        const json = await fetchJson(`${url}?page=${page}`, apiKey)
-        if (!json) break
-        const normalized = normalizeList(json)
-        if (!normalized.data.length) break
-        all.push(...normalized.data)
-        tier = normalized.tier ?? tier
-        if (!normalized.hasMore) break
-        page += 1
-      } catch {
-        break
-      }
-    }
-    if (all.length) return { data: all, tier }
+async function readSnapshot(): Promise<Snapshot | null> {
+  try {
+    const saved = (await store()?.get('snapshot', { type: 'json' })) as Snapshot | null
+    if (saved && (!memory || saved.savedAt > memory.savedAt)) memory = saved
+  } catch {
+    // keep memory copy
   }
-  return null
+  return memory
 }
 
-async function fetchBundle(apiKey: string) {
-  const [language, image, speech] = await Promise.all([
-    fetchPaged(LANGUAGE_URLS, apiKey),
-    fetchPaged(IMAGE_URLS, apiKey),
-    fetchPaged(SPEECH_URLS, apiKey),
-  ])
-  if (!language?.data.length && !image?.data.length && !speech?.data.length) return null
-  return {
-    language: language?.data ?? [],
-    image: image?.data ?? [],
-    speech: speech?.data ?? [],
-    tier: language?.tier ?? image?.tier ?? speech?.tier,
+async function readState(): Promise<UpstreamState> {
+  try {
+    const saved = (await store()?.get('state', { type: 'json' })) as UpstreamState | null
+    if (saved) memoryState = saved
+  } catch {
+    // keep memory copy
+  }
+  return memoryState
+}
+
+async function write(key: 'snapshot' | 'state', value: Snapshot | UpstreamState) {
+  try {
+    await store()?.setJSON(key, value)
+  } catch {
+    // memory copy is already updated
   }
 }
 
-function fallbackPayload() {
-  const fb = fallbackModels as {
-    language?: unknown[]
-    image?: unknown[]
-    speech?: unknown[]
-    data?: unknown[]
-    fetchedAt?: string
+function serveStale(snapshot: Snapshot | null, reason: FailureReason, retryAt?: number) {
+  if (snapshot) {
+    return json({ ...snapshot.payload, source: 'cache', stale: true, reason, retryAt })
   }
-  const language = fb.language ?? fb.data ?? (Array.isArray(fallbackModels) ? fallbackModels : [])
-  const image = fb.image ?? []
-  const speech = fb.speech ?? []
-  return {
-    language,
-    image,
-    speech,
-    data: [...language, ...image, ...speech],
-    fetchedAt: fb.fetchedAt ?? new Date().toISOString(),
-    source: 'fallback' as const,
+  return json({ ...fallbackPayload(fallbackModels), source: 'fallback', reason, retryAt })
+}
+
+async function handle(): Promise<Response> {
+  const now = Date.now()
+  const [snapshot, state] = await Promise.all([readSnapshot(), readState()])
+
+  if (snapshot && now - snapshot.savedAt < FRESH_MS) {
+    return json({ ...snapshot.payload, source: 'cache' })
   }
+
+  const apiKey = process.env.ARTIFICIAL_ANALYSIS_API_KEY
+  if (!apiKey) return serveStale(snapshot, 'missing-key')
+
+  if (state.cooldownUntil && state.cooldownUntil > now) {
+    return serveStale(snapshot, state.lastReason ?? 'rate-limited', state.cooldownUntil)
+  }
+
+  const result = await fetchModels(apiKey, state.freeOnly)
+  if (result.ok) {
+    memory = { payload: result.payload, savedAt: now }
+    memoryState = { freeOnly: result.freeOnly }
+    await Promise.all([write('snapshot', memory), write('state', memoryState)])
+    return json({ ...result.payload, source: 'live' })
+  }
+
+  // Back off so every visitor does not spend another request against an exhausted quota.
+  const cooldownUntil = result.retryAt ?? now + 15 * 60 * 1000
+  memoryState = { freeOnly: result.freeOnly, cooldownUntil, lastReason: result.reason }
+  await write('state', memoryState)
+  return serveStale(snapshot, result.reason, result.retryAt)
 }
 
 export default async (req: Request, _context: Context) => {
@@ -130,58 +127,11 @@ export default async (req: Request, _context: Context) => {
     })
   }
 
-  const now = Date.now()
-  if (memoryCache && memoryCache.expiresAt > now) {
-    return new Response(
-      JSON.stringify({
-        ...JSON.parse(memoryCache.body),
-        source: 'cache',
-      }),
-      { status: 200, headers: corsHeaders() },
-    )
-  }
-
-  const apiKey = process.env.ARTIFICIAL_ANALYSIS_API_KEY
-  if (!apiKey) {
-    return new Response(JSON.stringify(fallbackPayload()), {
-      status: 200,
-      headers: corsHeaders(),
-    })
-  }
-
-  const upstream = await fetchBundle(apiKey)
-  if (!upstream) {
-    const cached = memoryCache ? JSON.parse(memoryCache.body) : fallbackPayload()
-    return new Response(
-      JSON.stringify({
-        ...cached,
-        source: memoryCache ? 'cache' : 'fallback',
-      }),
-      { status: 200, headers: corsHeaders() },
-    )
-  }
-
-  const image = (upstream.image as Record<string, unknown>[]).map((m) => ({
-    ...m,
-    kind: 'image',
-  }))
-  const speech = (upstream.speech as Record<string, unknown>[]).map((m) => ({
-    ...m,
-    kind: 'speech',
-  }))
-  const payload = {
-    language: upstream.language,
-    image,
-    speech,
-    tier: upstream.tier,
-    data: [...upstream.language, ...image, ...speech],
-    fetchedAt: new Date().toISOString(),
-    source: 'live' as const,
-  }
-  const body = JSON.stringify(payload)
-  memoryCache = { body, expiresAt: now + CACHE_TTL_MS }
-
-  return new Response(body, { status: 200, headers: corsHeaders() })
+  // Collapse concurrent requests on a warm instance into a single upstream refresh.
+  inflight ??= handle().finally(() => {
+    inflight = null
+  })
+  return (await inflight).clone()
 }
 
 export const config: Config = {

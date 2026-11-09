@@ -46,7 +46,7 @@ function releasedAfter(months: number): number {
 
 export function BenchPage() {
   const { t } = useI18n()
-  const { models, data, loading, error } = useModels()
+  const { models, data, loading, notice } = useModels()
   const { favorites } = useFavorites()
   const [params, setParams] = useSearchParams()
 
@@ -170,8 +170,8 @@ export function BenchPage() {
           {t('navBench')}
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-mercury-mute">{t('heroSupport')}</p>
-        {error && (
-          <p className="mt-2 font-mono text-[11px] text-mercury-mute">{t('error')}</p>
+        {notice && (
+          <p className="mt-2 font-mono text-[11px] text-mercury-mute">{t(notice)}</p>
         )}
       </div>
 

@@ -157,6 +157,9 @@ const messages = {
     attribution: 'Data by Artificial Analysis',
     loading: 'Assaying models…',
     error: 'Showing snapshot data. Set ARTIFICIAL_ANALYSIS_API_KEY for live rankings.',
+    errorRateLimited:
+      'Artificial Analysis daily API quota reached — showing the last saved data. Live refresh resumes automatically.',
+    errorUpstream: 'Live data is temporarily unavailable — showing the last saved data.',
     back: 'Back to bench',
     overview: 'Overview',
     pricing: 'Pricing',
@@ -345,6 +348,9 @@ const messages = {
     attribution: 'Veri: Artificial Analysis',
     loading: 'Modeller tartılıyor…',
     error: 'Anlık veri gösteriliyor. Canlı sıralama için ARTIFICIAL_ANALYSIS_API_KEY ekle.',
+    errorRateLimited:
+      'Artificial Analysis günlük API kotası doldu — son kaydedilen veri gösteriliyor. Canlı yenileme otomatik olarak devam edecek.',
+    errorUpstream: 'Canlı veriye şu an ulaşılamıyor — son kaydedilen veri gösteriliyor.',
     back: 'Bench’e dön',
     overview: 'Özet',
     pricing: 'Fiyatlandırma',

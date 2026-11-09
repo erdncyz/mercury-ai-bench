@@ -255,6 +255,8 @@ function toRepo(r: GhRepo): RepoItem {
   }
 }
 
+class AuthError extends Error {}
+
 async function fetchRepos(q: string, token: string | undefined, errors: string[], label: string, page = 1) {
   const headers: Record<string, string> = { Accept: 'application/vnd.github+json' }
   if (token) headers.Authorization = `Bearer ${token}`
@@ -263,7 +265,9 @@ async function fetchRepos(q: string, token: string | undefined, errors: string[]
     const json = await fetchJson<{ items: GhRepo[] }>(url, headers)
     return (json.items ?? []).map(toRepo)
   } catch (err) {
-    errors.push(`GitHub ${label}: ${(err as Error).message}`)
+    const message = `GitHub ${label}: ${(err as Error).message}`
+    if (token && /^401 /.test((err as Error).message)) throw new AuthError(message)
+    errors.push(message)
     return []
   }
 }
@@ -286,7 +290,14 @@ async function fetchBucket(queries: string[], token: string | undefined, errors:
     const pages = token && q.includes('in:name,description,topics') ? [1, 2] : [1]
     return pages.map((page) => fetchRepos(q, token, errors, `${label}#${i + 1}p${page}`, page))
   })
-  return mergeRepos(await Promise.all(jobs))
+  try {
+    return mergeRepos(await Promise.all(jobs))
+  } catch (err) {
+    if (!(err instanceof AuthError)) throw err
+    // An expired/revoked token makes every call 401, while keyless search still works.
+    errors.push(`GitHub ${label}: token rejected (401), falling back to keyless search`)
+    return fetchBucket(queries, undefined, errors, label)
+  }
 }
 
 function parseCount(s: string | undefined) {

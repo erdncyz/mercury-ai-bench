@@ -6,6 +6,7 @@ import {
   normalizeMediaModel,
   type LegacyEvaluations,
 } from '../lib/normalize'
+import type { MessageKey } from '../i18n/messages'
 import type { AiModel, ModelsResponse } from '../types/models'
 
 const REFRESH_MS = 10 * 60 * 1000
@@ -65,6 +66,8 @@ async function loadModels(): Promise<ModelsResponse> {
           fetchedAt: json.fetchedAt ?? new Date().toISOString(),
           source: json.source ?? 'live',
           tier: json.tier,
+          reason: json.reason,
+          stale: Boolean(json.stale),
         }
       }
     } catch {
@@ -85,7 +88,7 @@ export function useModels() {
     try {
       const result = await withLegacy(await loadModels())
       setData(result)
-      setError(result.source === 'fallback')
+      setError(result.source === 'fallback' || Boolean(result.stale))
     } catch {
       setData(await withLegacy(await fromFallback()))
       setError(true)
@@ -105,5 +108,18 @@ export function useModels() {
     }
   }, [refresh])
 
-  return { data, loading, error, models: data?.data ?? ([] as AiModel[]), refresh }
+  return {
+    data,
+    loading,
+    error,
+    notice: error ? noticeFor(data?.reason) : null,
+    models: data?.data ?? ([] as AiModel[]),
+    refresh,
+  }
+}
+
+function noticeFor(reason: ModelsResponse['reason']): MessageKey {
+  if (reason === 'missing-key') return 'error'
+  if (reason === 'rate-limited') return 'errorRateLimited'
+  return 'errorUpstream'
 }
