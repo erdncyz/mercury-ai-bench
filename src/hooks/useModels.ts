@@ -1,8 +1,31 @@
 import { useCallback, useEffect, useState } from 'react'
-import { normalizeIncomingModels, normalizeLanguageModel, normalizeMediaModel } from '../lib/normalize'
+import {
+  applyLegacyEvaluations,
+  normalizeIncomingModels,
+  normalizeLanguageModel,
+  normalizeMediaModel,
+  type LegacyEvaluations,
+} from '../lib/normalize'
 import type { AiModel, ModelsResponse } from '../types/models'
 
 const REFRESH_MS = 10 * 60 * 1000
+
+let legacyPromise: Promise<LegacyEvaluations> | null = null
+
+// Lazy-loaded (and cached) so the frozen Math / Agents scores stay out of the main bundle.
+function loadLegacy(): Promise<LegacyEvaluations> {
+  legacyPromise ??= import('../data/legacy-evaluations.json')
+    .then((mod) => (mod.default as { models: LegacyEvaluations }).models)
+    .catch(() => {
+      legacyPromise = null
+      return {}
+    })
+  return legacyPromise
+}
+
+async function withLegacy(result: ModelsResponse): Promise<ModelsResponse> {
+  return { ...result, data: applyLegacyEvaluations(result.data, await loadLegacy()) }
+}
 
 // Lazy-loaded so the full fallback dataset stays out of the main bundle.
 async function fromFallback(): Promise<ModelsResponse> {
@@ -60,11 +83,11 @@ export function useModels() {
   const refresh = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
     try {
-      const result = await loadModels()
+      const result = await withLegacy(await loadModels())
       setData(result)
       setError(result.source === 'fallback')
     } catch {
-      setData(await fromFallback())
+      setData(await withLegacy(await fromFallback()))
       setError(true)
     } finally {
       setLoading(false)

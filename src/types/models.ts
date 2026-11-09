@@ -23,7 +23,7 @@ export interface ModelEvaluations {
   artificial_analysis_intelligence_index: number | null
   artificial_analysis_coding_index: number | null
   artificial_analysis_math_index: number | null
-  /** Headline agentic index. Replaces per-benchmark τ² / Terminal-Bench on the free feed. */
+  /** Headline agentic index. No longer published by AA; only present in legacy snapshots. */
   artificial_analysis_agentic_index?: number | null
   /** Public capability index used when the coding index is unpublished. */
   artificial_analysis_engineering_index?: number | null

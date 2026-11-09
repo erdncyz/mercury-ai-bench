@@ -1,4 +1,4 @@
-import type { AiModel, ModelKind } from '../types/models'
+import type { AiModel, ModelEvaluations, ModelKind } from '../types/models'
 import { lookupMediaPrice } from '../data/media-prices'
 import { resolveOpenWeights } from './openWeights'
 
@@ -70,15 +70,16 @@ export function normalizeLanguageModel(raw: Record<string, unknown>): AiModel {
         evaluations.artificial_analysis_engineering_index,
       ),
       terminalbench_v2_1: asNumber(evaluations.terminalbench_v2_1),
-      tau2: asNumber(evaluations.tau2),
+      // The Nov 2026 v2 API renamed several benchmark fields.
+      tau2: asNumber(evaluations.tau2) ?? asNumber(evaluations.tau2_telecom),
       livecodebench: asNumber(evaluations.livecodebench),
       scicode: asNumber(evaluations.scicode),
       aime: asNumber(evaluations.aime),
       aime_25: asNumber(evaluations.aime_25),
       mmlu_pro: asNumber(evaluations.mmlu_pro),
-      gpqa: asNumber(evaluations.gpqa),
+      gpqa: asNumber(evaluations.gpqa) ?? asNumber(evaluations.gpqa_diamond),
       hle: asNumber(evaluations.hle),
-      lcr: asNumber(evaluations.lcr),
+      lcr: asNumber(evaluations.lcr) ?? asNumber(evaluations.aa_lcr),
       ifbench: asNumber(evaluations.ifbench),
       terminalbench_hard: asNumber(evaluations.terminalbench_hard),
       math_500: asNumber(evaluations.math_500),
@@ -128,6 +129,25 @@ export function normalizeMediaModel(
     arena_rank: asNumber(raw.rank),
     appearances: asNumber(raw.appearances),
   }
+}
+
+export type LegacyEvaluations = Record<string, Partial<Record<keyof ModelEvaluations, number>>>
+
+/**
+ * Artificial Analysis stopped publishing the Math and Agentic indices (and per-benchmark
+ * scores on the free tier). Fill those gaps from the last snapshot that had them, keyed by
+ * the stable model id; live values always win.
+ */
+export function applyLegacyEvaluations(models: AiModel[], legacy: LegacyEvaluations): AiModel[] {
+  return models.map((model) => {
+    const old = model.kind === 'language' ? legacy[model.id] : undefined
+    if (!old) return model
+    const evaluations = { ...model.evaluations }
+    for (const [key, value] of Object.entries(old) as [keyof ModelEvaluations, number][]) {
+      if (evaluations[key] == null) evaluations[key] = value
+    }
+    return { ...model, evaluations }
+  })
 }
 
 export function normalizeIncomingModels(payload: unknown): AiModel[] {
