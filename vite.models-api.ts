@@ -1,15 +1,17 @@
 import type { Plugin } from 'vite'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import {
   fallbackPayload,
   fetchModels,
+  payloadAgeMs,
+  SNAPSHOT_TTL_MS,
   type FailureReason,
   type ModelsPayload,
 } from './shared/aaModels.ts'
 
-// Same budget as the Netlify function; persisted to disk so dev restarts don't burn quota.
-const FRESH_MS = 6 * 60 * 60 * 1000
+// Same daily budget as the Netlify function. Stored in <root>/.cache (not node_modules) so npm installs
+// and dev restarts keep the snapshot instead of spending quota again.
 
 interface DevCache {
   snapshot?: { payload: ModelsPayload; savedAt: number }
@@ -30,13 +32,17 @@ function loadEnvKey(root: string): string | undefined {
   }
 }
 
-function cachePath(root: string) {
-  return resolve(root, 'node_modules/.cache/mercury/aa-models.json')
+export function devModelsCachePath(root: string) {
+  return resolve(root, '.cache/mercury/aa-models.json')
 }
 
+const LEGACY_CACHE = 'node_modules/.cache/mercury/aa-models.json'
+
 function readCache(root: string): DevCache {
+  const path = devModelsCachePath(root)
+  const source = existsSync(path) ? path : resolve(root, LEGACY_CACHE)
   try {
-    return JSON.parse(readFileSync(cachePath(root), 'utf8')) as DevCache
+    return JSON.parse(readFileSync(source, 'utf8')) as DevCache
   } catch {
     return {}
   }
@@ -44,7 +50,7 @@ function readCache(root: string): DevCache {
 
 function writeCache(root: string, cache: DevCache) {
   try {
-    const path = cachePath(root)
+    const path = devModelsCachePath(root)
     mkdirSync(dirname(path), { recursive: true })
     writeFileSync(path, JSON.stringify(cache))
   } catch {
@@ -52,34 +58,49 @@ function writeCache(root: string, cache: DevCache) {
   }
 }
 
-function stale(root: string, cache: DevCache, reason: FailureReason, retryAt?: number) {
-  if (cache.snapshot) return { ...cache.snapshot.payload, source: 'cache', stale: true, reason, retryAt }
-  const fallback = JSON.parse(readFileSync(resolve(root, 'src/data/fallback-models.json'), 'utf8'))
-  return { ...fallbackPayload(fallback), source: 'fallback', reason, retryAt }
+/** Newest of the dev snapshot and the bundled fallback (refreshed by `npm run build`). */
+function newestSnapshot(root: string, cache: DevCache) {
+  let bundled: { payload: ModelsPayload; savedAt: number; bundled: true } | null = null
+  try {
+    const payload = fallbackPayload(JSON.parse(readFileSync(resolve(root, 'src/data/fallback-models.json'), 'utf8')))
+    bundled = { payload, savedAt: Date.now() - payloadAgeMs(payload), bundled: true }
+  } catch {
+    // no bundled data
+  }
+  if (cache.snapshot && (!bundled || cache.snapshot.savedAt >= bundled.savedAt)) {
+    return { ...cache.snapshot, bundled: false }
+  }
+  return bundled
 }
 
 async function respond(root: string) {
   const now = Date.now()
   const cache = readCache(root)
-  if (cache.snapshot && now - cache.snapshot.savedAt < FRESH_MS) {
-    return { ...cache.snapshot.payload, source: 'cache' }
+  const snapshot = newestSnapshot(root, cache)
+  if (snapshot && now - snapshot.savedAt < SNAPSHOT_TTL_MS) {
+    return { ...snapshot.payload, source: 'cache', nextRefreshAt: snapshot.savedAt + SNAPSHOT_TTL_MS }
   }
 
+  const stale = (reason: FailureReason, retryAt?: number) =>
+    snapshot
+      ? { ...snapshot.payload, source: snapshot.bundled ? 'fallback' : 'cache', stale: true, reason, retryAt }
+      : { ...fallbackPayload({}), source: 'fallback', reason, retryAt }
+
   const apiKey = loadEnvKey(root)
-  if (!apiKey) return stale(root, cache, 'missing-key')
+  if (!apiKey) return stale('missing-key')
   if (cache.cooldownUntil && cache.cooldownUntil > now) {
-    return stale(root, cache, cache.lastReason ?? 'rate-limited', cache.cooldownUntil)
+    return stale(cache.lastReason ?? 'rate-limited', cache.cooldownUntil)
   }
 
   const result = await fetchModels(apiKey, cache.freeOnly)
   if (result.ok) {
     writeCache(root, { snapshot: { payload: result.payload, savedAt: now }, freeOnly: result.freeOnly })
-    return { ...result.payload, source: 'live' }
+    return { ...result.payload, source: 'live', nextRefreshAt: now + SNAPSHOT_TTL_MS }
   }
 
-  const cooldownUntil = result.retryAt ?? now + 15 * 60 * 1000
+  const cooldownUntil = result.retryAt ?? now + 60 * 60 * 1000
   writeCache(root, { ...cache, freeOnly: result.freeOnly, cooldownUntil, lastReason: result.reason })
-  return stale(root, cache, result.reason, result.retryAt)
+  return stale(result.reason, cooldownUntil)
 }
 
 export function modelsApiPlugin(): Plugin {

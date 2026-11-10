@@ -29,7 +29,7 @@ export function SiteHeader() {
               {t('brandSuffix')}
             </span>
           </span>
-          <span className="hidden font-mono text-[10px] tracking-[0.08em] text-red-500 md:block">
+          <span className="hidden font-mono text-[10px] tracking-[0.08em] text-cyan md:block">
             Developed by Erdinç Yılmaz
           </span>
         </NavLink>

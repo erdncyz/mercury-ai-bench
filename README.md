@@ -6,7 +6,7 @@ Premium AI model benchmark site powered by [Artificial Analysis](https://artific
 
 - Vite + React + TypeScript
 - Tailwind CSS v4
-- Netlify Functions (API key proxy + 6h cache)
+- Netlify Functions (API key proxy + daily snapshot in Netlify Blobs)
 - EN / TR i18n (default EN)
 
 ## Local development
@@ -37,6 +37,14 @@ npm run netlify:dev
 5. Deploy.
 
 `netlify.toml` already configures redirects so `/api/models` hits the function and SPA routes fall back to `index.html`.
+
+### Model data cache (once a day)
+
+The Artificial Analysis free tier allows 100 requests / 24h (a full refresh needs ~6–12), so model data is fetched at most once a day and everything else reads the cached snapshot:
+
+- **Production:** the scheduled function `models-refresh` runs daily at 04:00 UTC (07:00 TR) and stores the snapshot in Netlify Blobs; `/api/models` only serves that snapshot. If a scheduled run is missed and the snapshot is over 24h old, the first request refreshes it once. A 429 sets a cooldown until the quota resets.
+- **Local dev:** the snapshot is saved to `.cache/mercury/aa-models.json` (git-ignored, survives `npm install`) with the same 24h rule.
+- **Build:** `npm run build` refreshes the bundled fallback only when it is older than 20h, reuses a fresh dev snapshot instead of calling the API, and skips during a cooldown. Force it with `REFRESH_FALLBACK=force npm run build`.
 
 ## Attribution
 

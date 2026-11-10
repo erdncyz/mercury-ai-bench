@@ -1,9 +1,12 @@
 // Refreshes the bundled fallback datasets from the live Artificial Analysis API.
 // Runs automatically before every build; exits 0 (keeping the old files) if the key is missing or the API fails.
+// The free tier allows only 100 requests / 24h (each refresh ~6–12), so it skips when the snapshot is recent
+// (set REFRESH_FALLBACK=force to override) and stops at the first 429.
 import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
+const MAX_AGE_MS = 20 * 60 * 60 * 1000
 const targets = [
   resolve(root, 'src/data/fallback-models.json'),
   resolve(root, 'netlify/functions/fallback-models.json'),
@@ -38,10 +41,41 @@ function normalizeList(raw) {
   return { data, hasMore: Boolean(raw.pagination?.has_more) }
 }
 
+class RateLimited extends Error {}
+
 async function fetchJson(url, apiKey) {
   const res = await fetch(url, { headers: { 'x-api-key': apiKey, Accept: 'application/json' } })
+  if (res.status === 429) throw new RateLimited('rate-limited (daily quota reached)')
   if (!res.ok) return null
   return res.json()
+}
+
+/** State saved by the Vite dev route; reused to avoid API calls (fresh snapshot or an active 429 cooldown). */
+function devCache() {
+  for (const path of ['.cache/mercury/aa-models.json', 'node_modules/.cache/mercury/aa-models.json']) {
+    try {
+      return JSON.parse(readFileSync(resolve(root, path), 'utf8'))
+    } catch {
+      // try next
+    }
+  }
+  return {}
+}
+
+function devSnapshot(cache) {
+  const { snapshot } = cache
+  if (!snapshot?.payload?.language?.length) return null
+  return { ...snapshot, age: Date.now() - snapshot.savedAt }
+}
+
+function snapshotAgeMs() {
+  try {
+    const { fetchedAt } = JSON.parse(readFileSync(targets[0], 'utf8'))
+    const age = Date.now() - Date.parse(fetchedAt)
+    return Number.isFinite(age) ? age : Infinity
+  } catch {
+    return Infinity
+  }
 }
 
 async function fetchPaged(urls, apiKey) {
@@ -65,11 +99,32 @@ async function main() {
     return
   }
 
-  const [language, image, speech] = await Promise.all([
-    fetchPaged(LANGUAGE_URLS, apiKey),
-    fetchPaged(IMAGE_URLS, apiKey),
-    fetchPaged(SPEECH_URLS, apiKey),
-  ])
+  const age = snapshotAgeMs()
+  const force = process.env.REFRESH_FALLBACK === 'force'
+  if (!force && age < MAX_AGE_MS) {
+    console.log(`[refresh-fallback] Snapshot is ${Math.round(age / 3600000)}h old; skipping to save API quota.`)
+    return
+  }
+
+  const cache = devCache()
+  const dev = devSnapshot(cache)
+  if (!force && dev && dev.age < MAX_AGE_MS && dev.age < age) {
+    const { language, image, speech, fetchedAt } = dev.payload
+    const body = JSON.stringify({ fetchedAt, language, image, speech })
+    for (const target of targets) writeFileSync(target, body)
+    console.log(`[refresh-fallback] Reused the ${Math.round(dev.age / 3600000)}h-old dev snapshot (no API call).`)
+    return
+  }
+
+  if (!force && cache.cooldownUntil > Date.now()) {
+    console.log(`[refresh-fallback] API quota cooldown until ${new Date(cache.cooldownUntil).toLocaleString()}; keeping existing files.`)
+    return
+  }
+
+  // Sequential so a 429 stops further spending.
+  const language = await fetchPaged(LANGUAGE_URLS, apiKey)
+  const image = await fetchPaged(IMAGE_URLS, apiKey)
+  const speech = await fetchPaged(SPEECH_URLS, apiKey)
 
   if (!language.length) {
     console.warn('[refresh-fallback] Upstream returned no language models; keeping existing fallback files.')

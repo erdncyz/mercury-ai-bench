@@ -75,7 +75,8 @@ export function HomePage() {
           models={ranked.length}
           creators={creators}
           frontier={frontier.length}
-          live={data?.source === 'live'}
+          live={data?.source === 'live' || (data?.source === 'cache' && !data.stale)}
+          fetchedAt={data?.fetchedAt}
         />
       )}
 

@@ -9,13 +9,19 @@ export function StatStrip({
   creators,
   frontier,
   live,
+  fetchedAt,
 }: {
   models: number
   creators: number
   frontier: number
   live: boolean
+  fetchedAt?: string
 }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
+  const snapshotDate =
+    !live && fetchedAt && Number.isFinite(Date.parse(fetchedAt))
+      ? new Date(fetchedAt).toLocaleDateString(locale === 'tr' ? 'tr-TR' : 'en-US', { day: 'numeric', month: 'short' })
+      : null
 
   const items = [
     { icon: Database, label: t('statsModels'), value: models, live: false },
@@ -47,6 +53,7 @@ export function StatStrip({
                 }`}
               />
               {live ? t('sourceLive') : t('sourceFallback')}
+              {snapshotDate && <span className="font-mono text-xs text-mercury-mute">· {snapshotDate}</span>}
             </p>
           ) : (
             <p className="mt-2 font-display text-3xl text-mercury">

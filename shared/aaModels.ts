@@ -2,6 +2,15 @@
 // The free tier allows 100 requests / 24h and each refresh needs ~6 (200 models per page),
 // so callers must cache aggressively and honour the cooldown returned on 429.
 
+/** Model data is refreshed from upstream at most once a day; everything else reads the cached snapshot. */
+export const SNAPSHOT_TTL_MS = 24 * 60 * 60 * 1000
+
+/** Age of a payload in ms based on its fetchedAt (Infinity when unknown). */
+export function payloadAgeMs(payload: { fetchedAt?: string } | null | undefined, now = Date.now()) {
+  const at = payload?.fetchedAt ? Date.parse(payload.fetchedAt) : NaN
+  return Number.isFinite(at) ? now - at : Infinity
+}
+
 // Pro routes are tried first; a 403 marks the key as free so later refreshes skip them.
 const ENDPOINTS = {
   language: [
