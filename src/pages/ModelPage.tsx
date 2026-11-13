@@ -1,4 +1,3 @@
-import { BenchmarkMeta, PriceMeta } from '../components/BenchmarkMeta'
 import { benchmarkDigits } from '../lib/benchmarks'
 import { ArrowLeft, Scales } from '@phosphor-icons/react'
 import { useMemo } from 'react'
@@ -33,11 +32,10 @@ export function ModelPage() {
   const { slug = '' } = useParams()
   const [params] = useSearchParams()
   const task = parseTask(params.get('task'))
-  const benchmark = params.get('benchmark')
   const { t } = useI18n()
   const { models, data, loading } = useModels()
 
-  const ranked = useMemo(() => rankModels(models, task, 'score', 4000, 1000, benchmark), [models, task, benchmark])
+  const ranked = useMemo(() => rankModels(models, task, 'score'), [models, task])
   const model = ranked.find((m) => m.slug === slug)
   const fallbackModel = models.find((m) => m.slug === slug)
   const display = model ?? fallbackModel
@@ -73,7 +71,7 @@ export function ModelPage() {
     <PageShell fetchedAt={data?.fetchedAt} source={data?.source} wide>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
-          to={`/bench?task=${task}${benchmark ? `&benchmark=${encodeURIComponent(benchmark)}` : ''}`}
+          to={`/bench?task=${task}`}
           className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-mercury-mute hover:text-cyan"
         >
           <ArrowLeft size={14} />
@@ -81,7 +79,7 @@ export function ModelPage() {
         </Link>
         <div className="flex items-center gap-2">
           <Link
-            to={`/compare?task=${task}&m=${display.slug}${model?.benchmark ? `&benchmark=${encodeURIComponent(model.benchmark.id)}` : ''}`}
+            to={`/compare?task=${task}&m=${display.slug}`}
             className="inline-flex items-center gap-1.5 rounded-md border border-white/8 px-2.5 py-1.5 font-mono text-[11px] uppercase tracking-wider text-mercury-mute transition hover:border-cyan/40 hover:text-cyan"
           >
             <Scales size={13} />
@@ -271,17 +269,6 @@ export function ModelPage() {
         </section>
       </div>
 
-      <section className="panel mt-4 rounded-2xl p-5">
-        <h2 className="text-sm font-medium text-mercury">{t('allModelResults')}</h2>
-        <p className="mt-2 text-xs text-mercury-mute">{t('currentOnlyHint')}</p>
-        <PriceMeta pricing={display.pricing} />
-        <ul className="mt-4 grid gap-4 md:grid-cols-2">
-          {(display.benchmarks ?? []).map((result) => <li key={result.id} className="rounded-xl border border-white/8 p-4">
-            <p className="font-mono text-lg text-cyan">{formatScore(result.score, benchmarkDigits(result))}{result.unit === 'percent' ? '%' : result.unit === 'tokens/s' ? ' t/s' : ''}</p>
-            <BenchmarkMeta result={result} />
-          </li>)}
-        </ul>
-      </section>
 
       {model && (
         <section className="panel mt-4 rounded-2xl p-5">

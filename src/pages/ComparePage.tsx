@@ -1,5 +1,4 @@
-import { BenchmarkMeta, PriceMeta } from '../components/BenchmarkMeta'
-import { BenchmarkPicker } from '../components/BenchmarkPicker'
+import { PriceMeta } from '../components/PriceMeta'
 import { modelPath } from '../lib/benchmarks'
 import { ArrowLeft, MagnifyingGlass, X } from '@phosphor-icons/react'
 import { motion } from 'motion/react'
@@ -148,14 +147,13 @@ export function ComparePage() {
   const { models, data, loading } = useModels()
   const [params, setParams] = useSearchParams()
   const task = parseTask(params.get('task'))
-  const benchmark = params.get('benchmark')
   const slugs = useMemo(
     () => [...new Set((params.get('m') ?? '').split(',').filter(Boolean))].slice(0, MAX_COMPARE),
     [params],
   )
   const [query, setQuery] = useState('')
 
-  const ranked = useMemo(() => rankModels(models, task, 'score', 4000, 1000, benchmark), [models, task, benchmark])
+  const ranked = useMemo(() => rankModels(models, task, 'score'), [models, task])
   const bySlug = useMemo(() => new Map(ranked.map((m) => [m.slug, m])), [ranked])
   // Models without a score for this task still deserve a column; rank/score just read as empty.
   const selected = slugs
@@ -199,7 +197,7 @@ export function ComparePage() {
     <PageShell fetchedAt={data?.fetchedAt} source={data?.source} wide>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
-          to={`/bench?task=${task}${benchmark ? `&benchmark=${encodeURIComponent(benchmark)}` : ''}`}
+          to={`/bench?task=${task}`}
           className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-mercury-mute hover:text-cyan"
         >
           <ArrowLeft size={14} />
@@ -220,7 +218,6 @@ export function ComparePage() {
         </div>
       ) : (
         <>
-          <BenchmarkPicker models={models} task={task} value={benchmark} sources={data?.sources} onChange={(value) => { const next = new URLSearchParams(params); next.set('benchmark', value); setParams(next, { replace: true }) }} />
           <div className="panel mb-6 rounded-2xl p-3">
             <div className="flex flex-wrap items-center gap-2">
               {selected.map((m, i) => (
@@ -309,7 +306,7 @@ export function ComparePage() {
                                   {m.model_creator.name}
                                   {m.rank > 0 ? ` · #${m.rank}` : ''}
                                 </p>
-                                <BenchmarkMeta result={m.benchmark} compact />
+
                                 <PriceMeta pricing={m.pricing} />
                               </div>
                               <FavoriteButton slug={m.slug} size={14} />

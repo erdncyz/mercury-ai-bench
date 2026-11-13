@@ -1,4 +1,4 @@
-import { selectBenchmark } from './benchmarks'
+import { combinedTaskResults, selectBenchmark } from './benchmarks'
 import type { AiModel, CostScenario, RankedModel, SortKey, TaskId } from '../types/models'
 
 export const COST_SCENARIOS: CostScenario[] = [
@@ -66,6 +66,7 @@ export function agentsScore(model: AiModel): number | null {
 export function getTaskScore(model: AiModel, task: TaskId, benchmarkId?: string): number | null {
   if (model.benchmarks) {
     const active = (model as RankedModel).benchmark
+    if (active?.id === `combined:${task}` && (!benchmarkId || benchmarkId === active.id)) return active.score
     return model.benchmarks.find((r) => r.task === task && r.id === (benchmarkId ?? (active?.task === task ? active.id : selectBenchmark([model], task)?.id)))?.score ?? null
   }
   const e = model.evaluations
@@ -144,18 +145,23 @@ export function rankModels(
   outputTokens = 1000,
   benchmarkId?: string | null,
 ): RankedModel[] {
-  const selectedBenchmark = selectBenchmark(models, task, benchmarkId)
-  const pool = modelsForTask(models, task)
+  const automatic = !benchmarkId || benchmarkId.startsWith('combined:')
+  const combined = automatic && models.some((model) => model.benchmarks) ? combinedTaskResults(modelsForTask(models, task), task) : null
+  const selectedBenchmark = combined ? undefined : selectBenchmark(models, task, benchmarkId)
+  const pool = combined ? combined.map(({ model, benchmark }) => ({ ...model, benchmark })) : modelsForTask(models, task)
   const enriched = pool
     .map((model): RankedModel | null => {
-      const score = getTaskScore(model, task, selectedBenchmark?.id)
-      const valueScore = getValueScore(model, task, selectedBenchmark?.id)
+      const chosen = (model as RankedModel).benchmark
+      const score = chosen?.score ?? getTaskScore(model, task, selectedBenchmark?.id)
+      const valueScore = chosen && chosen.id !== `combined:${task}`
+        ? getValueScore(model, task, chosen.id)
+        : getValueScore(model, task, selectedBenchmark?.id)
       const requestCost = estimateRequestCost(model, inputTokens, outputTokens)
       if (score == null) return null
       return {
         ...model,
         rank: 0,
-        benchmark: model.benchmarks?.find((r) => r.id === selectedBenchmark?.id),
+        benchmark: chosen ?? model.benchmarks?.find((r) => r.id === selectedBenchmark?.id),
         score,
         valueScore: valueScore ?? 0,
         requestCost: requestCost ?? Number.POSITIVE_INFINITY,

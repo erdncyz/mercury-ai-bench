@@ -489,7 +489,7 @@ function curatedItem(prompt: CuratedPrompt, lang: PromptLang): PromptItem {
   }
 }
 
-const MERGED_TTL_MS = 10 * 60 * 1000
+const MERGED_TTL_MS = 24 * 60 * 60 * 1000
 const poolCache = new Map<string, { items: PromptItem[]; expiresAt: number; pending?: Promise<PromptItem[]> }>()
 
 /** Deduped prompts.chat results for a set of keyword searches; shared by every section using the same queries. */

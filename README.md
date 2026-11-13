@@ -90,17 +90,19 @@ Feature logic checks: `node --test tests/features.test.mjs`.
 
 ## Comparable benchmarks and provenance
 
-The benchmark selector on Home, Bench and Compare selects **one source, test version and cohort**. Scores from Coding Index, Engineering Index, τ², Terminal-Bench, LiveBench and other tests never fill one another's gaps. Every tested configuration stays in the full leaderboard. Missing scores are excluded rather than treated as zero.
+Home, Bench and Compare automatically combine the available results for each task. There is no source selector or per-row provenance panel. Detailed source metadata remains in the data pipeline and CSV exports.
+
+For tasks with multiple compatible task-level tests, each test is converted to a 0–100 relative standing (midrank for ties). Multiple tests from one source first receive one averaged source vote; available source votes are then averaged with equal weight. These derived values are labeled **Combined score**, never presented as a published raw benchmark score. A task with only one test retains its original score and units. Current results take precedence over archived results; historical-only fields retain a historical-leader heading. Latest snapshots/test releases are selected automatically. Exact model names and configurations are deduplicated, without dropping effort or agent qualifiers. Missing tests are not assigned zero.
 
 - Artificial Analysis remains the main source for its indices, speed and media arenas. When AA omits a test version or evaluation date, the UI says it is unpublished; the retrieval date is not presented as the evaluation date.
-- `src/data/archive-models.json` preserves the 18 September 2026 snapshot as a separate, explicitly historical dataset, with separate model identities and prices. It is never merged into current model evaluations. Historical-only categories show a historical-leader heading and warning.
-- [LiveBench](https://livebench.ai/) supplies its current v2 Coding, Long Agentic and weighted Overall scores. Only complete suites enter Overall, using the official category weights and rounding. The frozen v1 2026-06-25 Mathematics and IF suites are separate historical choices.
+- `src/data/archive-models.json` preserves the 18 September 2026 snapshot as a separate, explicitly historical dataset, with separate model identities and prices. It is never written into current model evaluations. Historical-only categories show a historical-leader heading and warning.
+- [LiveBench](https://livebench.ai/) supplies its current v2 Coding, Long Agentic and weighted Overall scores. Only complete suites enter Overall, using the official category weights and rounding. The frozen v1 2026-06-25 Mathematics and IF suites remain historical inputs.
 - [LiveCodeBench](https://livecodebench.github.io/leaderboard.html) uses the official page's default problem window. Only models evaluated on the identical problem set and released before the window enter this cohort. Old problem windows remain explicitly historical.
 - [SWE-bench](https://www.swebench.com/) imports checked Verified results with mini-SWE-agent and one attempt, separating each harness version. Submission dates are shown separately from unknown evaluation dates.
 - [Terminal-Bench](https://www.tbench.ai/) imports its public server-rendered results as model **plus agent** configurations, preserving the benchmark version. It does not claim these are model-only scores.
 - [OpenRouter](https://openrouter.ai/docs/guides/overview/models) provides token list prices only for unique exact identities with no configuration qualifiers removed. It only fills missing language-model prices and does not replace AA prices. Per-request and conditional-price entries are excluded from this simple token calculator.
 
-Source links and attribution accompany results. Refer to each source's own license and terms; public access does not imply all datasets have the same license. LiveBench/LiveCodeBench aggregates are derived from the published data, not a new benchmark. Agent results use their published environment, not a common Mercury agent.
+Source attribution is retained in the footer; detailed provenance is retained in data and CSV exports. Refer to each source's own license and terms; public access does not imply all datasets have the same license. LiveBench/LiveCodeBench aggregates are derived from the published data, not a new benchmark. Agent results use their published environment, not a common Mercury agent.
 
 ### Refresh and failure behavior
 
@@ -114,4 +116,4 @@ node --test tests/benchmarks.test.mjs
 
 The refresh script and tests use Node's native TypeScript support (Node 22.18+; developed with Node 26). The build runs both fallback-refresh scripts automatically.
 
-Media prices omitted by the upstream payload are explicitly labeled manually maintained estimates with an unknown price date. The price source/date follows results into model details and CSV exports. Scores, price freshness and evaluation freshness are independent. No current result is invented when a source has not tested a model.
+Media prices omitted by the upstream payload are explicitly labeled manually maintained estimates with an unknown price date. The price source/date remains in CSV exports; the UI only flags estimated prices. Scores, price freshness and evaluation freshness are independent. No current result is invented when a source has not tested a model.

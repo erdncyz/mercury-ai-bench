@@ -127,3 +127,28 @@ test('old supplemental snapshots become historical without changing their retrie
   assert.equal(merged[0].benchmarks[0].historical, true)
   assert.equal(merged[0].benchmarks[0].collectedAt, previousDate)
 })
+
+test('automatic ranking combines different score scales as relative standings', () => {
+  const aa = attachArtificialAnalysis([model('A', { artificial_analysis_engineering_index: 80 }), model('B', { artificial_analysis_engineering_index: 40 })], now)
+  const external = liveBenchRows('model,coding\nC,10\nD,5\n', { Coding: ['coding'] }, '20261106', now)
+  const ranked = rankModels([...aa, ...external], 'coding')
+  assert.equal(ranked.length, 4)
+  assert.equal(ranked.find((m) => m.id === 'A').score, ranked.find((m) => m.name === 'C').score)
+  assert.equal(ranked.find((m) => m.id === 'B').score, ranked.find((m) => m.name === 'D').score)
+  assert.ok(ranked.every((m) => m.score >= 0 && m.score <= 100 && m.benchmark.id === 'combined:coding'))
+  assert.equal(ranked[0].valueScore, ranked[0].score / ranked[0].pricing.price_1m_blended_3_to_1)
+})
+
+test('combined rankings count identical configurations once and keep effort variants', () => {
+  const aa = attachArtificialAnalysis([model('a', { artificial_analysis_coding_index: 80 }), model('b', { artificial_analysis_coding_index: 40 }), { ...model('high', { artificial_analysis_coding_index: 70 }), name: 'a (high)' }], now)
+  const other = aa.slice(0, 2).map((m) => ({ ...m, id: `other:${m.id}`, benchmarks: m.benchmarks.map((r) => ({ ...r, id: `other:${r.task}`, source: 'Other', label: 'Other test', score: r.score * 10 })) }))
+  const ranked = rankModels([...aa, ...other], 'coding')
+  assert.equal(ranked.length, 3)
+  assert.ok(ranked.some((m) => m.name === 'a (high)'))
+})
+
+test('automatic ranking keeps published values for a task with a single test', () => {
+  const rows = rankModels(attachArtificialAnalysis([model('A', { artificial_analysis_coding_index: 81.6 }), model('B', { artificial_analysis_coding_index: 70.5 })], now), 'coding')
+  assert.equal(rows[0].score, 81.6)
+  assert.equal(rows[0].benchmark.label, 'AA Coding Index')
+})

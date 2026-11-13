@@ -1,4 +1,4 @@
-import { BenchmarkMeta, PriceMeta } from './BenchmarkMeta'
+import { PriceMeta } from './PriceMeta'
 import { benchmarkDigits, modelPath } from '../lib/benchmarks'
 import { ArrowRight } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
@@ -76,7 +76,7 @@ export function TopTeaser({
                 </p>
                 <div className="mt-auto flex items-center justify-between border-t border-white/8 pt-3 font-mono text-xs">
                   <span className="text-mercury-dim">
-                    {t('score')}{' '}
+                    {t(model.benchmark?.id.startsWith('combined:') ? 'combinedScore' : 'score')}{' '}
                     {formatScore(model.score, benchmarkDigits(model.benchmark, scoreDigits(task)))}
                   </span>
                   <span className="text-cyan">
@@ -86,7 +86,7 @@ export function TopTeaser({
                   </span>
                 </div>
               </Link>
-              <div className="px-5 pb-3"><BenchmarkMeta result={model.benchmark} compact /><PriceMeta pricing={model.pricing} /></div>
+              <div className="px-5 pb-3"><PriceMeta pricing={model.pricing} /></div>
               <FavoriteButton slug={model.slug} className="absolute right-4 top-4" />
             </motion.div>
           </motion.li>

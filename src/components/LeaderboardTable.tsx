@@ -1,4 +1,4 @@
-import { BenchmarkMeta, PriceMeta } from './BenchmarkMeta'
+import { PriceMeta } from './PriceMeta'
 import { benchmarkDigits, modelPath } from '../lib/benchmarks'
 import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
@@ -108,7 +108,7 @@ export function LeaderboardTable({
       <ol className="divide-y divide-white/8 md:hidden">
         {models.map((model) => {
           const metrics = [
-            { label: media && task !== 'presentation' ? t('eloScore') : t('score'), value: formatScore(model.score, benchmarkDigits(model.benchmark, digits)) },
+            { label: model.benchmark?.id.startsWith('combined:') ? t('combinedScore') : media && task !== 'presentation' ? t('eloScore') : t('score'), value: formatScore(model.score, benchmarkDigits(model.benchmark, digits)) },
             ...(media
               ? [{ label: t('unitPrice'), value: formatMediaPrice(model) }]
               : [
@@ -130,7 +130,7 @@ export function LeaderboardTable({
                     {model.name}
                   </Link>
                   <p className="text-xs text-mercury-mute">{model.model_creator.name}</p>
-                  <BenchmarkMeta result={model.benchmark} compact />
+
                   <PriceMeta pricing={model.pricing} />
                   <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-cyan">
                     {isNewRelease(model) && <span>{t('newBadge')}</span>}
@@ -164,14 +164,14 @@ export function LeaderboardTable({
       <div className="hidden md:block">
         <p className="border-b border-white/8 px-4 py-3 text-xs text-mercury-mute xl:hidden">{t('scrollTable')}</p>
         <div className="table-scroll overflow-x-auto" role="region" aria-label={t('navBench')} tabIndex={0}>
-          <table className="w-full min-w-[900px] border-collapse text-left text-sm">
+          <table className="w-full min-w-[900px] border-collapse text-left text-sm [&_th]:whitespace-nowrap">
             <thead>
               <tr className="border-b border-white/8 text-[11px] uppercase tracking-[0.16em] text-mercury-mute">
                 {selectable && <th className="w-10 px-3 py-3" aria-label={t('compare')} />}
                 <th className="px-4 py-3 font-medium">{t('rank')}</th>
                 <th className="px-4 py-3 font-medium">{t('model')}</th>
                 <th className="px-4 py-3 font-medium">
-                  {media && task !== 'presentation' ? t('eloScore') : t('score')}
+                  {models[0]?.benchmark?.id.startsWith('combined:') ? t('combinedScore') : media && task !== 'presentation' ? t('eloScore') : t('score')}
                 </th>
                 {media ? (
                   <th className="px-4 py-3 font-medium">{t('unitPrice')}</th>
@@ -197,7 +197,7 @@ export function LeaderboardTable({
                   }`}
                 >
                   {selectable && (
-                    <td className="px-3 py-3">
+                    <td className="whitespace-nowrap px-3 py-3">
                       <input
                         type="checkbox"
                         className="h-4 w-4 accent-cyan"
@@ -207,10 +207,10 @@ export function LeaderboardTable({
                       />
                     </td>
                   )}
-                  <td className="px-4 py-3">
+                  <td className="whitespace-nowrap px-4 py-3">
                     <span className="rank-metal font-display text-xl">{model.rank}</span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="min-w-[20rem] whitespace-normal px-4 py-3">
                     <div className="flex items-center gap-2">
                       <FavoriteButton slug={model.slug} />
                       <Link
@@ -220,12 +220,12 @@ export function LeaderboardTable({
                         {model.name}
                       </Link>
                       {isNewRelease(model) && (
-                        <span className="rounded-full border border-cyan/40 bg-cyan/10 px-1.5 py-px font-mono text-[9px] uppercase tracking-wider text-cyan">
+                        <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full border border-cyan/40 bg-cyan/10 px-2 py-1 font-mono text-[9px] leading-none uppercase tracking-wider text-cyan">
                           {t('newBadge')}
                         </span>
                       )}
                       {model.open_weights && (
-                        <span className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-1.5 py-px font-mono text-[9px] uppercase tracking-wider text-emerald-200">
+                        <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full border border-emerald-300/30 bg-emerald-300/10 px-2 py-1 font-mono text-[9px] leading-none uppercase tracking-wider text-emerald-200">
                           {t('openBadge')}
                         </span>
                       )}
@@ -238,45 +238,45 @@ export function LeaderboardTable({
                       />
                       {model.model_creator.name}
                     </div>
-                    <BenchmarkMeta result={model.benchmark} compact />
+
                     <PriceMeta pricing={model.pricing} />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="whitespace-nowrap px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <span className="w-10 font-mono text-mercury-dim">
+                      <span className="w-12 shrink-0 whitespace-nowrap font-mono text-mercury-dim">
                         {formatScore(model.score, benchmarkDigits(model.benchmark, digits))}
                       </span>
                       <ScoreBar value={model.score} max={maxScore} delay={Math.min(index * 0.02, 0.4)} />
                     </div>
                   </td>
                   {media ? (
-                    <td className="px-4 py-3 font-mono text-mercury-dim">
+                    <td className="whitespace-nowrap px-4 py-3 font-mono text-mercury-dim">
                       {formatMediaPrice(model)}
                     </td>
                   ) : (
                     <>
-                      <td className="px-4 py-3 font-mono text-mercury-dim">
+                      <td className="whitespace-nowrap px-4 py-3 font-mono text-mercury-dim">
                         {formatUsd(model.pricing.price_1m_input_tokens)}
                       </td>
-                      <td className="px-4 py-3 font-mono text-mercury-dim">
+                      <td className="whitespace-nowrap px-4 py-3 font-mono text-mercury-dim">
                         {formatUsd(model.pricing.price_1m_output_tokens)}
                       </td>
-                      <td className="px-4 py-3 font-mono text-mercury-dim">
+                      <td className="whitespace-nowrap px-4 py-3 font-mono text-mercury-dim">
                         {formatUsd(model.pricing.price_1m_blended_3_to_1)}
                       </td>
-                      <td className="px-4 py-3 font-mono text-mercury-dim">
+                      <td className="whitespace-nowrap px-4 py-3 font-mono text-mercury-dim">
                         {formatSpeed(model.median_output_tokens_per_second)}
                       </td>
                     </>
                   )}
-                  <td className="px-4 py-3 font-mono text-cyan">
+                  <td className="whitespace-nowrap px-4 py-3 font-mono text-cyan">
                     {formatUsd(
                       Number.isFinite(model.requestCost) ? model.requestCost : null,
                       4,
                     )}
                   </td>
                   {showMonthly && (
-                    <td className="px-4 py-3 font-mono text-mercury">
+                    <td className="whitespace-nowrap px-4 py-3 font-mono text-mercury">
                       {formatUsd(
                         Number.isFinite(model.requestCost)
                           ? model.requestCost * monthlyRequests
@@ -284,7 +284,7 @@ export function LeaderboardTable({
                       )}
                     </td>
                   )}
-                  <td className="px-4 py-3 font-mono text-mercury-dim">
+                  <td className="whitespace-nowrap px-4 py-3 font-mono text-mercury-dim">
                     {model.valueScore > 0 ? formatScore(model.valueScore, 2) : '—'}
                   </td>
                 </tr>

@@ -1,4 +1,4 @@
-import { BenchmarkMeta, PriceMeta } from './BenchmarkMeta'
+import { PriceMeta } from './PriceMeta'
 import { benchmarkDigits, modelPath } from '../lib/benchmarks'
 import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
@@ -84,13 +84,13 @@ export function BestFpCard({
                     </p>
                     <div className="mt-auto flex items-center justify-between border-t border-white/8 pt-3 font-mono text-xs">
                       <span className="text-mercury-dim">
-                        {t('score')} {formatScore(model.score, benchmarkDigits(model.benchmark, isMedia ? 0 : 1))}
+                        {t(model.benchmark?.id.startsWith('combined:') ? 'combinedScore' : 'score')} {formatScore(model.score, benchmarkDigits(model.benchmark, isMedia ? 0 : 1))}
                       </span>
                       <span className="text-cyan">{priceLabel}</span>
                     </div>
                   </div>
                 </Link>
-                <div className="px-5 pb-3"><BenchmarkMeta result={model.benchmark} compact /><PriceMeta pricing={model.pricing} /></div>
+                <div className="px-5 pb-3"><PriceMeta pricing={model.pricing} /></div>
                 <FavoriteButton slug={model.slug} className="absolute right-4 top-4" />
               </motion.div>
             </motion.li>

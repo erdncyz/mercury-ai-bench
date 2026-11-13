@@ -1,7 +1,6 @@
 import { DownloadSimple, MagnifyingGlass, Scales, Star, X } from '@phosphor-icons/react'
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { BenchmarkPicker } from '../components/BenchmarkPicker'
 import { BestFpCard } from '../components/BestFpCard'
 import { BestPerformanceCard } from '../components/BestPerformanceCard'
 import { FrontierChart } from '../components/charts/FrontierChart'
@@ -53,7 +52,6 @@ export function BenchPage() {
   const [params, setParams] = useSearchParams()
 
   const task = parseTask(params.get('task'))
-  const benchmark = params.get('benchmark')
   const sort = parseSort(params.get('sort'))
   const releaseWindow = parseWindow(params.get('since'))
   const weights = parseWeights(params.get('weights'))
@@ -73,7 +71,7 @@ export function BenchPage() {
   }, [models, task, weights])
 
   const ranked = useMemo(() => {
-    let list = rankModels(models, task, sort, cost.inputTokens, cost.outputTokens, benchmark)
+    let list = rankModels(models, task, sort, cost.inputTokens, cost.outputTokens)
     if (weights === 'open') list = list.filter((m) => m.open_weights)
     if (weights === 'closed') list = list.filter((m) => !m.open_weights)
     if (creator !== 'all') {
@@ -105,10 +103,10 @@ export function BenchPage() {
       )
     }
     return list
-  }, [models, task, benchmark, sort, creator, query, cost, favoritesOnly, favorites, releaseWindow, maxPrice, weights])
+  }, [models, task, sort, creator, query, cost, favoritesOnly, favorites, releaseWindow, maxPrice, weights])
 
   const bestFp = useMemo(() => bestValueModels(ranked, 3), [ranked])
-  const performanceRanked = useMemo(() => rankModels(models, task, 'score', 4000, 1000, benchmark), [models, task, benchmark])
+  const performanceRanked = useMemo(() => rankModels(models, task, 'score'), [models, task])
   const isMedia = task === 'image' || task === 'speech' || task === 'video' || task === 'presentation'
 
   const updateParams = (mutate: (p: URLSearchParams) => void) => {
@@ -191,8 +189,6 @@ export function BenchPage() {
         </div>
       ) : (
         <>
-          <BenchmarkPicker models={models} task={task} value={benchmark} sources={data?.sources}
-            onChange={(value) => { setSelected(new Set()); updateParams((p) => p.set('benchmark', value)) }} />
           <div className={`mb-6 grid gap-4 ${task !== 'presentation' ? 'lg:grid-cols-[1.2fr_0.8fr]' : ''}`}>
             {task !== 'presentation' && <FrontierChart models={ranked} task={task} />}
             <RankBars models={ranked} task={task} />
@@ -202,7 +198,6 @@ export function BenchPage() {
             <BestPerformanceCard models={performanceRanked} task={task} />
           </div>
           <BestFpCard models={bestFp} task={task} />
-          <p className="mt-3 text-xs leading-relaxed text-mercury-mute">{t('benchmarkPricingHint')}</p>
 
           {!isMedia && (
             <div className="mt-6">
@@ -353,7 +348,7 @@ export function BenchPage() {
                   {selected.size}/{MAX_COMPARE} {t('compareSelected')}
                 </span>
                 <Link
-                  to={`/compare?task=${task}&m=${[...selected].join(',')}${performanceRanked[0]?.benchmark ? `&benchmark=${encodeURIComponent(performanceRanked[0].benchmark.id)}` : ''}`}
+                  to={`/compare?task=${task}&m=${[...selected].join(',')}`}
                   className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition ${
                     selected.size >= 2
                       ? 'bg-mercury text-ink hover:bg-cyan'

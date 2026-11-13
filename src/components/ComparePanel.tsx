@@ -35,7 +35,7 @@ export function ComparePanel({
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <Link
-        to={`/compare?task=${task}&m=${top.map((m) => m.slug).join(',')}${top[0]?.benchmark ? `&benchmark=${encodeURIComponent(top[0].benchmark.id)}` : ''}`}
+        to={`/compare?task=${task}&m=${top.map((m) => m.slug).join(',')}`}
         className="panel group flex flex-col rounded-2xl p-5 transition hover:border-cyan/30"
       >
         <p className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.22em] text-cyan">

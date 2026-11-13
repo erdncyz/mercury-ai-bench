@@ -1,7 +1,7 @@
 import type { Plugin } from 'vite'
 import { createPromptsCache, handlePromptsRequest } from './shared/prompts.ts'
 
-const cache = createPromptsCache(10 * 60 * 1000)
+const cache = createPromptsCache(24 * 60 * 60 * 1000)
 
 export function promptsApiPlugin(): Plugin {
   return {

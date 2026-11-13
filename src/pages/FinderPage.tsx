@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageShell, SkeletonBlock } from '../components/PageShell'
 import { CostControls, DEFAULT_COST } from '../components/CostControls'
-import { BenchmarkMeta, PriceMeta } from '../components/BenchmarkMeta'
+import { PriceMeta } from '../components/PriceMeta'
 import { useModels } from '../hooks/useModels'
 import { useI18n } from '../i18n/I18nProvider'
 import { TASKS } from '../i18n/messages'
@@ -76,7 +76,7 @@ export function FinderPage() {
               <article key={model.id} className={`panel rounded-2xl p-5 ${index === 0 ? 'border-cyan/40' : ''}`}>
                 <p className="text-sm text-mercury-mute">#{index + 1} · {model.model_creator.name}</p>
                 <h3 className="mt-2 break-words text-xl text-mercury">{model.name}</h3>
-                <BenchmarkMeta result={model.benchmark} compact />
+
                 <dl className="mt-5 space-y-3 text-sm">
                   {[
                     [t('monthlyEstimate'), formatUsd(monthlyCost)],
@@ -90,7 +90,7 @@ export function FinderPage() {
               </article>
             ))}
           </div>
-          {results.length > 1 && <Link to={`/compare?${new URLSearchParams({ task: submitted.task, m: results.map((r) => r.model.slug).join(','), ...(results[0].model.benchmark ? { benchmark: results[0].model.benchmark.id } : {}) })}`} className="mt-5 inline-flex min-h-11 items-center rounded-full border border-cyan/40 px-5 text-sm text-cyan">{t('compareShortlist')}</Link>}
+          {results.length > 1 && <Link to={`/compare?${new URLSearchParams({ task: submitted.task, m: results.map((r) => r.model.slug).join(','),  })}`} className="mt-5 inline-flex min-h-11 items-center rounded-full border border-cyan/40 px-5 text-sm text-cyan">{t('compareShortlist')}</Link>}
         </section>
       )}
       <details className="mt-8 text-sm text-mercury-mute"><summary className="cursor-pointer text-mercury-dim">{t('methodology')}</summary><p className="mt-3 max-w-3xl leading-relaxed">{t('finderMethod')}</p></details>

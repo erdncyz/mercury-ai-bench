@@ -47,7 +47,7 @@ export function SiteFooter({
           </a>
           {(updated || sourceLabel) && (
             <p className="font-mono text-[11px] tracking-wide">
-              Artificial Analysis · {t('dataCollected')}
+              {t('lastUpdated')}
               {updated ? `: ${updated}` : ''}
               {sourceLabel ? ` · ${sourceLabel}` : ''}
             </p>

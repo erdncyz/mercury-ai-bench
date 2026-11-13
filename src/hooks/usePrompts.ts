@@ -4,7 +4,7 @@ import type { PromptItem, PromptLang, PromptSort, PromptsPayload } from '../../s
 export type { PromptItem, PromptSort, PromptsPayload } from '../../shared/prompts'
 export { PROMPT_GROUPS, PROMPT_SECTIONS } from '../../shared/prompts'
 
-const STALE_MS = 10 * 60 * 1000
+const STALE_MS = 24 * 60 * 60 * 1000
 
 export async function loadPrompts(
   section: string,

@@ -1,15 +1,15 @@
 import type { Config, Context } from '@netlify/functions'
 import { createPromptsCache, handlePromptsRequest } from '../../shared/prompts'
 
-// prompts.chat gets new prompts every few hours; 10 minutes keeps lists current without hammering it.
-const cache = createPromptsCache(10 * 60 * 1000)
+// Refresh community prompts once a day.
+const cache = createPromptsCache(24 * 60 * 60 * 1000)
 
 function headers() {
   return {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Content-Type': 'application/json',
-    'Cache-Control': 'public, max-age=60, s-maxage=600, stale-while-revalidate=600',
+    'Cache-Control': 'public, max-age=86400, s-maxage=86400',
   }
 }
 

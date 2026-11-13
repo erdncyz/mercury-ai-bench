@@ -2,11 +2,10 @@ import { useEffect, useState } from 'react'
 import type { PromptLang, PromptsPayload } from '../../shared/prompts'
 import { loadPrompts } from './usePrompts'
 
-const REFRESH_MS = 10 * 60 * 1000
+const REFRESH_MS = 24 * 60 * 60 * 1000
 
 export function useLibraryPrompts(lang: PromptLang) {
   const [state, setState] = useState<{ lang: PromptLang; data?: PromptsPayload; loading: boolean; error: boolean }>({ lang, loading: true, error: false })
-  const [revision, setRevision] = useState(0)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -31,7 +30,7 @@ export function useLibraryPrompts(lang: PromptLang) {
     }
     void refresh()
     const timer = window.setInterval(() => {
-      if (document.visibilityState === 'visible') void refresh()
+      onFocus()
     }, REFRESH_MS)
     window.addEventListener('focus', onFocus)
     document.addEventListener('visibilitychange', onFocus)
@@ -41,7 +40,7 @@ export function useLibraryPrompts(lang: PromptLang) {
       window.removeEventListener('focus', onFocus)
       document.removeEventListener('visibilitychange', onFocus)
     }
-  }, [lang, revision])
+  }, [lang])
 
   const active = state.lang === lang ? state : undefined
   return {
@@ -49,6 +48,5 @@ export function useLibraryPrompts(lang: PromptLang) {
     fetchedAt: active?.data?.fetchedAt,
     loading: active?.loading ?? true,
     error: active?.error ?? false,
-    refresh: () => setRevision(value => value + 1),
   }
 }
