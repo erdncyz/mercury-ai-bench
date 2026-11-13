@@ -3,17 +3,21 @@ import { BestFpCard } from './BestFpCard'
 import { useI18n } from '../i18n/I18nProvider'
 import type { RankedModel, TaskId } from '../types/models'
 
-export function BestPerformanceCard({ models, task }: { models: RankedModel[]; task: TaskId }) {
+export function BestPerformanceCard({ models, task, variant = 'performance' }: { models: RankedModel[]; task: TaskId; variant?: 'performance' | 'value' }) {
   const { t } = useI18n()
   const [expandedTask, setExpandedTask] = useState<TaskId | null>(null)
   const expanded = expandedTask === task
   const listId = useId()
-  const ranked = [...models].sort((a, b) => b.score - a.score)
+  const ranked = [...models].sort((a, b) => variant === 'value' ? b.valueScore - a.valueScore : b.score - a.score)
 
   return (
     <div>
       <div id={listId}>
-        <BestFpCard models={expanded ? ranked : ranked.slice(0, 3)} task={task} variant="performance" />
+        {ranked.length > 0 ? (
+          <BestFpCard models={expanded ? ranked : ranked.slice(0, 3)} task={task} variant={variant} />
+        ) : (
+          <p className="py-5 text-sm text-mercury-mute">{t('noResults')}</p>
+        )}
       </div>
       {ranked.length > 3 && (
         <button

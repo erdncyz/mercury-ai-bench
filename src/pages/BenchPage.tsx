@@ -1,15 +1,13 @@
-import { DownloadSimple, MagnifyingGlass, Scales, Star, X } from '@phosphor-icons/react'
+import { DownloadSimple, MagnifyingGlass, Scales, X } from '@phosphor-icons/react'
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { BestFpCard } from '../components/BestFpCard'
 import { BestPerformanceCard } from '../components/BestPerformanceCard'
 import { FrontierChart } from '../components/charts/FrontierChart'
 import { RankBars } from '../components/charts/RankBars'
-import { CostControls, DEFAULT_COST, type CostSettings } from '../components/CostControls'
+import { DEFAULT_COST } from '../components/CostControls'
 import { LeaderboardTable } from '../components/LeaderboardTable'
 import { PageShell, SkeletonBlock } from '../components/PageShell'
 import { TaskPicker } from '../components/TaskPicker'
-import { useFavorites } from '../hooks/useFavorites'
 import { useModels } from '../hooks/useModels'
 import { useI18n } from '../i18n/I18nProvider'
 import { downloadText, rankedToCsv } from '../lib/export'
@@ -18,8 +16,6 @@ import { bestValueModels, modelsForTask, rankModels, TASK_IDS } from '../lib/ran
 import type { SortKey, TaskId } from '../types/models'
 
 const SORT_IDS: SortKey[] = ['score', 'price', 'speed', 'value']
-const RELEASE_WINDOWS = ['all', '3', '6', '12'] as const
-type ReleaseWindow = (typeof RELEASE_WINDOWS)[number]
 const WEIGHT_FILTERS = ['all', 'open', 'closed'] as const
 type WeightFilter = (typeof WEIGHT_FILTERS)[number]
 const MAX_COMPARE = 4
@@ -32,36 +28,23 @@ function parseSort(value: string | null): SortKey {
   return SORT_IDS.includes(value as SortKey) ? (value as SortKey) : 'score'
 }
 
-function parseWindow(value: string | null): ReleaseWindow {
-  return RELEASE_WINDOWS.includes(value as ReleaseWindow) ? (value as ReleaseWindow) : 'all'
-}
-
 function parseWeights(value: string | null): WeightFilter {
   return WEIGHT_FILTERS.includes(value as WeightFilter) ? (value as WeightFilter) : 'all'
-}
-
-function releasedAfter(months: number): number {
-  const d = new Date()
-  d.setMonth(d.getMonth() - months)
-  return d.getTime()
 }
 
 export function BenchPage() {
   const { t } = useI18n()
   const { models, data, loading, notice } = useModels()
-  const { favorites } = useFavorites()
   const [params, setParams] = useSearchParams()
 
   const task = parseTask(params.get('task'))
   const sort = parseSort(params.get('sort'))
-  const releaseWindow = parseWindow(params.get('since'))
   const weights = parseWeights(params.get('weights'))
-  const favoritesOnly = params.get('fav') === '1'
-  const maxPrice = Number.parseFloat(params.get('max') ?? '') || 0
   const [query, setQuery] = useState('')
   const [creator, setCreator] = useState('all')
-  const [cost, setCost] = useState<CostSettings>(DEFAULT_COST)
+  const cost = DEFAULT_COST
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
+  const [highlight, setHighlight] = useState<'performance' | 'value'>(() => sort === 'value' ? 'value' : 'performance')
 
   const creators = useMemo(() => {
     let pool = modelsForTask(models, task)
@@ -78,22 +61,6 @@ export function BenchPage() {
     if (creator !== 'all') {
       list = list.filter((m) => m.model_creator.name === creator)
     }
-    if (favoritesOnly) {
-      list = list.filter((m) => favorites.includes(m.slug))
-    }
-    if (releaseWindow !== 'all') {
-      const cutoff = releasedAfter(Number(releaseWindow))
-      list = list.filter((m) => {
-        const ts = m.release_date ? Date.parse(m.release_date) : NaN
-        return Number.isFinite(ts) && ts >= cutoff
-      })
-    }
-    if (maxPrice > 0) {
-      list = list.filter((m) => {
-        const p = m.pricing.price_unit ?? m.pricing.price_1m_blended_3_to_1
-        return p != null && p <= maxPrice
-      })
-    }
     if (query.trim()) {
       const q = query.trim().toLowerCase()
       list = list.filter(
@@ -104,9 +71,9 @@ export function BenchPage() {
       )
     }
     return list
-  }, [models, task, sort, creator, query, cost, favoritesOnly, favorites, releaseWindow, maxPrice, weights])
+  }, [models, task, sort, creator, query, cost, weights])
 
-  const bestFp = useMemo(() => bestValueModels(ranked, 3), [ranked])
+  const bestFp = useMemo(() => bestValueModels(ranked, ranked.length), [ranked])
   const performanceRanked = useMemo(() => rankModels(models, task, 'score'), [models, task])
   const showFrontier = task !== 'presentation' && chartable(ranked, task).length >= 3
   const isMedia = task === 'image' || task === 'speech' || task === 'video' || task === 'presentation'
@@ -151,19 +118,6 @@ export function BenchPage() {
     }
   }
 
-  const windowLabel = (w: ReleaseWindow) => {
-    switch (w) {
-      case '3':
-        return t('last3m')
-      case '6':
-        return t('last6m')
-      case '12':
-        return t('last12m')
-      default:
-        return t('anyTime')
-    }
-  }
-
   const control =
     'rounded-lg border border-white/8 bg-ink px-3 py-2 text-sm text-mercury outline-none focus:border-cyan/40'
 
@@ -197,15 +151,26 @@ export function BenchPage() {
           </div>
 
           <div className="mb-6">
-            <BestPerformanceCard models={performanceRanked} task={task} />
-          </div>
-          <BestFpCard models={bestFp} task={task} />
-
-          {!isMedia && (
-            <div className="mt-6">
-              <CostControls value={cost} onChange={setCost} />
+            <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label={t('sortScore')}>
+              {(['performance', 'value'] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={highlight === option}
+                  onClick={() => setHighlight(option)}
+                  className={`rounded-full border px-4 py-2 text-sm transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan ${highlight === option ? 'border-cyan/40 bg-cyan/10 text-cyan' : 'border-white/10 text-mercury-mute hover:border-cyan/30 hover:text-mercury'}`}
+                >
+                  {t(option === 'performance' ? 'bestPerformance' : 'bestFp')}
+                </button>
+              ))}
             </div>
-          )}
+            <BestPerformanceCard
+              key={highlight}
+              models={highlight === 'performance' ? performanceRanked : bestFp}
+              task={task}
+              variant={highlight}
+            />
+          </div>
 
           <div className="panel mb-6 mt-6 flex flex-col gap-3 rounded-2xl p-3 sm:flex-row sm:flex-wrap sm:items-center">
             <label className="relative min-w-0 flex-1 sm:max-w-xs">
@@ -247,59 +212,6 @@ export function BenchPage() {
                 </option>
               ))}
             </select>
-            <select
-              value={releaseWindow}
-              onChange={(e) =>
-                updateParams((p) => {
-                  if (e.target.value === 'all') p.delete('since')
-                  else p.set('since', e.target.value)
-                })
-              }
-              className={control}
-              aria-label={t('releasedWithin')}
-            >
-              {RELEASE_WINDOWS.map((w) => (
-                <option key={w} value={w}>
-                  {windowLabel(w)}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              min={0}
-              step={0.5}
-              value={maxPrice || ''}
-              onChange={(e) =>
-                updateParams((p) => {
-                  if (!e.target.value || Number(e.target.value) <= 0) p.delete('max')
-                  else p.set('max', e.target.value)
-                })
-              }
-              placeholder={t('maxPrice')}
-              aria-label={t('maxPrice')}
-              className={`${control} w-32 font-mono placeholder:text-mercury-mute`}
-            />
-            <button
-              type="button"
-              onClick={() =>
-                updateParams((p) => {
-                  if (favoritesOnly) p.delete('fav')
-                  else p.set('fav', '1')
-                })
-              }
-              aria-pressed={favoritesOnly}
-              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition ${
-                favoritesOnly
-                  ? 'border-amber-300/40 bg-amber-300/10 text-amber-200'
-                  : 'border-white/8 text-mercury-mute hover:text-mercury'
-              }`}
-            >
-              <Star size={14} weight={favoritesOnly ? 'fill' : 'regular'} />
-              {t('favoritesOnly')}
-              {favorites.length > 0 && (
-                <span className="font-mono text-[11px] opacity-70">{favorites.length}</span>
-              )}
-            </button>
             <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
               <span className="font-mono text-[11px] uppercase tracking-wider text-mercury-mute">
                 {t('sortBy')}
@@ -330,18 +242,14 @@ export function BenchPage() {
             </div>
           </div>
 
-          {favoritesOnly && favorites.length === 0 ? (
-            <p className="panel rounded-2xl p-8 text-center text-mercury-mute">{t('noFavorites')}</p>
-          ) : (
-            <LeaderboardTable
+          <LeaderboardTable
               models={ranked}
               task={task}
               shimmerKey={task}
               selected={selected}
               onToggleSelect={toggleSelect}
               monthlyRequests={cost.monthlyRequests}
-            />
-          )}
+          />
 
           {selected.size > 0 && (
             <div className="compare-dock pointer-events-none fixed inset-x-0 bottom-5 z-30 flex justify-center px-4">

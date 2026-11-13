@@ -53,9 +53,9 @@ export function TopTeaser({
                 className="flex min-h-[168px] flex-1 flex-col p-5"
               >
                 <div className="flex items-baseline justify-between pr-11">
-                  <span className="rank-metal font-display text-3xl">{model.rank}</span>
+                  <span className="rank-metal font-display text-3xl">{index + 1}</span>
                   <span className="font-mono text-[11px] text-mercury-mute">
-                    #{index + 1}
+                    #{model.rank}
                   </span>
                 </div>
                 <p className="mt-3 line-clamp-2 min-h-[3.25rem] text-lg font-medium leading-snug text-mercury">

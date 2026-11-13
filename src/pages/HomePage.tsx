@@ -13,7 +13,7 @@ import { useModels } from '../hooks/useModels'
 import { usePulse } from '../hooks/usePulse'
 import { useI18n } from '../i18n/I18nProvider'
 import { paretoFrontier } from '../lib/charts'
-import { rankModels } from '../lib/ranking'
+import { bestValueModels, rankModels } from '../lib/ranking'
 import type { TaskId } from '../types/models'
 
 export function HomePage() {
@@ -27,6 +27,7 @@ export function HomePage() {
     [models, task],
   )
   const frontier = useMemo(() => paretoFrontier(ranked, task), [ranked, task])
+  const bestPrice = useMemo(() => bestValueModels(ranked, 5), [ranked])
   const creators = useMemo(
     () => new Set(ranked.map((m) => m.model_creator.name)).size,
     [ranked],
@@ -89,14 +90,18 @@ export function HomePage() {
           icon={ChartBar}
           title={t('navBench')}
           description={t('homeBenchDesc')}
-          to={`/bench?task=${task}`}
+          to={`/bench?task=${task}&sort=value`}
           cta={t('viewFull')}
         />
         <div className="mb-5">
           <TaskPicker value={task} onChange={setTask} compact />
         </div>
         {loading ? <SkeletonBlock className="h-44" /> : (
-          <TopTeaser models={ranked} task={task} hideHeader />
+          <div>
+            <h2 className="mb-1 font-mono text-[11px] uppercase tracking-[0.22em] text-cyan">{t('bestFp')}</h2>
+            <p className="mb-3 text-xs text-mercury-mute">{t('homeBestPriceHint')}</p>
+            <TopTeaser models={bestPrice} task={task} hideHeader />
+          </div>
         )}
       </section>
 

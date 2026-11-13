@@ -1,9 +1,12 @@
 import { MagnifyingGlass } from '@phosphor-icons/react'
 import { useEffect, useState, type ReactNode } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { PageShell, SkeletonBlock } from '../components/PageShell'
 import { PromptCard } from '../components/PromptCard'
 import { PromptLibrary } from '../components/PromptLibrary'
+import { PromptCover } from '../components/PromptCover'
+import { LIBRARY_CATEGORIES } from '../data/promptLibrary'
+import { classifyLibraryPrompt } from '../../shared/promptLibrary'
 import { PROMPT_GROUPS, PROMPT_SECTIONS, usePrompts, type PromptSort } from '../hooks/usePrompts'
 import { useI18n } from '../i18n/I18nProvider'
 
@@ -12,11 +15,10 @@ function parseSection(value: string | null) {
 }
 
 export function PromptsPage() {
-  const { locale, t } = useI18n()
+  const { locale } = useI18n()
   const [params, setParams] = useSearchParams()
   const live = params.get('view') === 'live' || (!!params.get('section') && params.get('view') !== 'library')
-  const switcher = <div className="mb-6">
-      <Link to="/workspace" className="mb-3 flex min-h-11 w-fit items-center rounded-lg border border-cyan/40 px-4 text-sm text-cyan">{t('workspaceOpen')}</Link>
+  const switcher = <div className="mb-6 flex justify-center">
       <nav aria-label={locale === 'tr' ? 'Prompt koleksiyonları' : 'Prompt collections'} className="inline-flex flex-wrap gap-1 rounded-xl border border-white/10 bg-ink-panel p-1">
         {(['library', 'live'] as const).map(view => <button key={view} type="button" aria-pressed={live === (view === 'live')} onClick={() => setParams(prev => { const next = new URLSearchParams(prev); next.set('view', view); return next }, { replace: true })} className={`rounded-lg px-4 py-2 text-sm ${live === (view === 'live') ? 'bg-cyan/10 text-cyan' : 'text-mercury-mute hover:text-mercury'}`}>
           {view === 'library' ? (locale === 'tr' ? 'Görsel kütüphane' : 'Visual library') : (locale === 'tr' ? 'Topluluk promptları' : 'Community prompts')}
@@ -65,13 +67,26 @@ function LivePromptsPage({ switcher }: { switcher: ReactNode }) {
   }, [draft])
 
   const activeSection = PROMPT_SECTIONS.find((s) => s.id === section)
+  const groupCover = (group: string) => LIBRARY_CATEGORIES.find(category => category.id === ({
+    featured: 'illustration', software: 'software', architecture: 'architecture',
+    design: 'ux', editing: 'photography', business: 'business', knowledge: 'writing',
+  }[group] ?? 'illustration'))!
+
 
   return (
     <PageShell fetchedAt={fetchedAt} source={source} wide>
       {switcher}
-      <header className="mb-6">
+      <header className="mb-8">
         <h1 className="font-display text-4xl text-mercury md:text-5xl">{t('navPrompts')}</h1>
-        <p className="mt-2 max-w-2xl text-sm text-mercury-mute">{t('promptsHint')}</p>
+      </header>
+      <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="font-display text-3xl text-mercury">{locale === 'tr' ? 'Bir alan seç, ilham bul.' : 'Pick a field. Find inspiration.'}</h2>
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-mercury-dim">{t('promptsHint')}</p>
+        </div>
+        <span className="shrink-0 text-xs text-mercury-mute">{locale === 'tr' ? 'Kaynak görseli olmayan kartlarda temsili kapak kullanılır.' : 'Cards without a source image use an illustrated cover.'}</span>
+      </div>
+      <div className="mb-6">
         <a
           href="https://prompts.chat"
           target="_blank"
@@ -81,33 +96,30 @@ function LivePromptsPage({ switcher }: { switcher: ReactNode }) {
           {t('promptsSource')}
         </a>
         {error && <p className="mt-2 font-mono text-[11px] text-mercury-mute">{t('pulseError')}</p>}
-      </header>
+      </div>
 
-      <nav className="panel mb-5 space-y-3 rounded-2xl p-4" aria-label={t('navPrompts')}>
-        {PROMPT_GROUPS.map((group) => (
-          <div key={group.id} className="flex flex-col gap-2 md:flex-row md:items-start md:gap-4">
-            <p className="shrink-0 pt-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-mercury-mute md:w-40">
-              {group.label[locale]}
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {PROMPT_SECTIONS.filter((s) => s.group === group.id).map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => update({ section: item.id === 'all' ? null : item.id })}
-                  aria-pressed={section === item.id}
-                  className={`rounded-md border px-2.5 py-1.5 text-sm transition ${
-                    section === item.id
-                      ? 'border-cyan/40 bg-cyan/10 text-cyan'
-                      : 'border-white/8 text-mercury-mute hover:text-mercury'
-                  }`}
-                >
-                  {item.label[locale]}
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
+      <nav className="mb-6" aria-label={t('navPrompts')}>
+        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          {PROMPT_GROUPS.map(group => (
+            <button key={group.id} type="button"
+              aria-pressed={activeSection?.group === group.id}
+              onClick={() => update({ section: PROMPT_SECTIONS.find(item => item.group === group.id)?.id ?? null })}
+              className={`overflow-hidden rounded-xl border text-left transition ${activeSection?.group === group.id ? 'border-cyan bg-cyan/5' : 'border-white/10 hover:border-white/30'}`}
+            >
+              <div className="h-20"><PromptCover category={groupCover(group.id)} /></div>
+              <div className="px-3 py-2.5"><span className="block text-xs font-medium text-mercury">{group.label[locale]}</span></div>
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {PROMPT_SECTIONS.filter(item => item.group === activeSection?.group).map(item => (
+            <button key={item.id} type="button"
+              onClick={() => update({ section: item.id === 'all' ? null : item.id })}
+              aria-pressed={section === item.id}
+              className={`rounded-lg border px-3 py-2 text-sm transition ${section === item.id ? 'border-cyan/40 bg-cyan/10 text-cyan' : 'border-white/10 text-mercury-mute hover:border-white/30 hover:text-mercury'}`}
+            >{item.label[locale]}</button>
+          ))}
+        </div>
       </nav>
 
       {(section === 'architect' || section.startsWith('arch-')) && (
@@ -164,20 +176,28 @@ function LivePromptsPage({ switcher }: { switcher: ReactNode }) {
       </div>
 
       {loading ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 9 }).map((_, i) => (
-            <SkeletonBlock key={i} className="h-56" />
+            <SkeletonBlock key={i} className="h-96" />
           ))}
         </div>
       ) : items.length === 0 ? (
         <p className="panel rounded-2xl p-8 text-center text-sm text-mercury-mute">{t('pulseEmpty')}</p>
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map((prompt) => (
-              <PromptCard key={prompt.id} prompt={prompt} />
-            ))}
-          </div>
+          <section aria-labelledby="community-results">
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-white/10 pb-4">
+              <h3 id="community-results" className="text-xl font-medium" style={{ color: groupCover(activeSection?.group ?? 'featured').color }}>{activeSection?.label[locale]}</h3>
+              <span className="text-xs text-mercury-mute">{total} {t('promptsResults')}</span>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {items.map((prompt, index) => {
+                const categoryId = prompt.libraryCategory ?? classifyLibraryPrompt(prompt.original ? { ...prompt, ...prompt.original } : prompt)
+                const category = LIBRARY_CATEGORIES.find(item => item.id === categoryId) ?? groupCover(activeSection?.group ?? 'featured')
+                return <PromptCard key={prompt.id} prompt={prompt} cover={<PromptCover category={category} variant={index} />} />
+              })}
+            </div>
+          </section>
           {hasMore && (
             <div className="mt-5 flex justify-center">
               <button
