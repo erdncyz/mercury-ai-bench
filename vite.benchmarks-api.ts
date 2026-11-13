@@ -17,7 +17,7 @@ export function benchmarksApiPlugin(): Plugin {
           for (const file of [path, resolve(server.config.root, 'src/data/benchmark-sources.json')]) {
             try { candidates.push(JSON.parse(readFileSync(file, 'utf8'))) } catch { /* use bundled data */ }
           }
-          const previous = candidates.sort((a, b) => Date.parse(b.checkedAt) - Date.parse(a.checkedAt))[0]
+          const previous = candidates.filter((candidate) => candidate.sources.some((source) => source.id === 'arena-vision')).sort((a, b) => Date.parse(b.checkedAt) - Date.parse(a.checkedAt))[0]
           const retryMs = previous?.sources.some((s) => s.status !== 'ok') ? 60 * 60 * 1000 : SOURCE_TTL_MS
           if (Date.now() - Date.parse(previous?.checkedAt ?? '') < retryMs) return previous
           const result = await refreshSupplemental(previous)

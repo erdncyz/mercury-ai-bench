@@ -12,7 +12,7 @@ export function benchmarkSnapshot(maxAgeMs = SOURCE_TTL_MS): Promise<Supplementa
     try {
       store = getStore('benchmark-sources')
       const saved = await store.get('snapshot', { type: 'json' }) as SupplementalData | null
-      if (saved && Date.parse(saved.checkedAt) > Date.parse(memory.checkedAt)) memory = saved
+      if (saved && memory.sources.every((source) => saved.sources.some((s) => s.id === source.id)) && Date.parse(saved.checkedAt) > Date.parse(memory.checkedAt)) memory = saved
     } catch { /* retain bundled snapshot */ }
     const retryMs = memory.sources.some((s) => s.status !== 'ok') ? 3600000 : SOURCE_TTL_MS
     if (Date.now() - Date.parse(memory.checkedAt) < Math.min(maxAgeMs, retryMs)) return memory

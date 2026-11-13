@@ -45,6 +45,15 @@ export function SiteFooter({
             {t('attribution')}
             <ArrowUpRight size={14} />
           </a>
+          <a
+            href="https://huggingface.co/datasets/lmarena-ai/leaderboard-dataset"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-mercury-dim underline-offset-4 hover:text-cyan hover:underline"
+          >
+            Arena Vision · CC BY 4.0
+            <ArrowUpRight size={14} />
+          </a>
           {(updated || sourceLabel) && (
             <p className="font-mono text-[11px] tracking-wide">
               {t('lastUpdated')}

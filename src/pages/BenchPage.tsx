@@ -44,7 +44,7 @@ export function BenchPage() {
   const [creator, setCreator] = useState('all')
   const cost = DEFAULT_COST
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
-  const [highlight, setHighlight] = useState<'performance' | 'value'>(() => sort === 'value' ? 'value' : 'performance')
+  const highlight = sort === 'value' ? 'value' : 'performance'
 
   const creators = useMemo(() => {
     let pool = modelsForTask(models, task)
@@ -74,7 +74,7 @@ export function BenchPage() {
   }, [models, task, sort, creator, query, cost, weights])
 
   const bestFp = useMemo(() => bestValueModels(ranked, ranked.length), [ranked])
-  const performanceRanked = useMemo(() => rankModels(models, task, 'score'), [models, task])
+  const performanceRanked = useMemo(() => [...ranked].sort((a, b) => b.score - a.score), [ranked])
   const showFrontier = task !== 'presentation' && chartable(ranked, task).length >= 3
   const isMedia = task === 'image' || task === 'speech' || task === 'video' || task === 'presentation'
 
@@ -157,7 +157,7 @@ export function BenchPage() {
                   key={option}
                   type="button"
                   aria-pressed={highlight === option}
-                  onClick={() => setHighlight(option)}
+                  onClick={() => setSort(option === 'value' ? 'value' : 'score')}
                   className={`rounded-full border px-4 py-2 text-sm transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan ${highlight === option ? 'border-cyan/40 bg-cyan/10 text-cyan' : 'border-white/10 text-mercury-mute hover:border-cyan/30 hover:text-mercury'}`}
                 >
                   {t(option === 'performance' ? 'bestPerformance' : 'bestFp')}

@@ -7,6 +7,7 @@ const sourceDefinitions = [
   { id: 'swebench', name: 'SWE-bench', url: 'https://www.swebench.com/' },
   { id: 'terminalbench', name: 'Terminal-Bench', url: 'https://www.tbench.ai/' },
   { id: 'presentbench', name: 'PresentBench', url: 'https://presentbench.github.io/' },
+  { id: 'arena-vision', name: 'Arena Vision', url: 'https://huggingface.co/datasets/lmarena-ai/leaderboard-dataset' },
   { id: 'openrouter', name: 'OpenRouter', url: 'https://openrouter.ai/models' },
 ] as const
 
@@ -196,6 +197,38 @@ export function presentBenchRows(html: string, now: string): AiModel[] {
   })
 }
 
+export function arenaVisionRows(rows: Row[], now: string): AiModel[] {
+  const overall = rows.filter((row) => row.category === 'overall' && /^\d{4}-\d{2}-\d{2}$/.test(row.leaderboard_publish_date))
+  const published = overall.map((row) => row.leaderboard_publish_date as string).sort().at(-1)
+  const creators: Record<string, string> = {
+    anthropic: 'Anthropic', openai: 'OpenAI', google: 'Google', alibaba: 'Alibaba',
+    xai: 'xAI', zai: 'Z AI', moonshot: 'Moonshot AI', meta: 'Meta', mistral: 'Mistral',
+  }
+  return overall.flatMap((row) => {
+    const score = number(row.rating)
+    if (row.leaderboard_publish_date !== published || !row.model_name || score == null || score < 0) return []
+    const benchmark = result('Arena Vision', 'https://huggingface.co/datasets/lmarena-ai/leaderboard-dataset', 'vision', 'Arena Vision (style controlled)', published!, score, now, {
+      unit: 'elo', publishedAt: published, historical: old(published!, now),
+      configuration: 'Image understanding; overall category; style-controlled human preferences',
+    })
+    const open = typeof row.license === 'string' && row.license.trim() !== '' && !/proprietary|closed|unknown/i.test(row.license)
+    return [entry('arena-vision', row.model_name, row.model_name, creators[row.organization] ?? row.organization ?? organization(row.model_name), [benchmark], open)]
+  })
+}
+
+async function arenaVision(fetcher: Fetcher, now: string) {
+  const url = 'https://datasets-server.huggingface.co/rows?dataset=lmarena-ai%2Fleaderboard-dataset&config=vision_style_control&split=latest&length=100'
+  const first = await read(`${url}&offset=0`, fetcher)
+  if (!Array.isArray(first.rows) || !Number.isInteger(first.num_rows_total) || first.num_rows_total < 1 || first.num_rows_total > 10000) throw new Error('Invalid Arena Vision dataset')
+  const pages = await Promise.all(Array.from({ length: Math.ceil(first.num_rows_total / 100) - 1 }, (_, index) => read(`${url}&offset=${(index + 1) * 100}`, fetcher)))
+  const records = [first, ...pages].flatMap((page) => {
+    if (!Array.isArray(page.rows)) throw new Error('Invalid Arena Vision page')
+    return page.rows.map((record: Row) => record.row)
+  })
+  if (records.length !== first.num_rows_total) throw new Error('Incomplete Arena Vision dataset')
+  return arenaVisionRows(records, now)
+}
+
 export async function refreshSupplemental(previous?: SupplementalData, fetcher: Fetcher = fetch, now = new Date().toISOString()): Promise<SupplementalData> {
   const loaders = [
     () => livebench(fetcher, now),
@@ -203,6 +236,7 @@ export async function refreshSupplemental(previous?: SupplementalData, fetcher: 
     async () => sweBenchRows(await read('https://raw.githubusercontent.com/SWE-bench/swe-bench.github.io/master/data/leaderboards.json', fetcher), now),
     async () => terminalBenchRows(await read('https://www.tbench.ai/', fetcher, false), now),
     async () => presentBenchRows(await read('https://presentbench.github.io/', fetcher, false), now),
+    () => arenaVision(fetcher, now),
   ]
   const models: AiModel[] = [], sources: SourceStatus[] = []
   let prices: SupplementalData['prices'] = previous?.prices ?? []

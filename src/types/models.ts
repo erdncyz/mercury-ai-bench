@@ -1,6 +1,7 @@
 export type TaskId =
   | 'coding'
   | 'agents'
+  | 'vision'
   | 'math'
   | 'intelligence'
   | 'longcontext'

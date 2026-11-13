@@ -10,6 +10,7 @@ export const COST_SCENARIOS: CostScenario[] = [
 export const TASK_IDS: TaskId[] = [
   'coding',
   'agents',
+  'vision',
   'math',
   'intelligence',
   'longcontext',
@@ -27,7 +28,7 @@ export function isFractionTask(task: TaskId): boolean {
 }
 
 export function scoreDigits(task: TaskId): number {
-  if (task === 'image' || task === 'speech' || task === 'video') return 0
+  if (task === 'vision' || task === 'image' || task === 'speech' || task === 'video') return 0
   return isFractionTask(task) ? 2 : 1
 }
 

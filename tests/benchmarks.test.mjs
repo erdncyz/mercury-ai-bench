@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { after, test } from 'node:test'
 import { createServer } from 'vite'
-import { parseCsv, liveBenchRows, liveCodeBenchRows, sweBenchRows, terminalBenchRows, refreshSupplemental } from '../shared/benchmarks/sources.ts'
+import { parseCsv, liveBenchRows, liveCodeBenchRows, sweBenchRows, terminalBenchRows, arenaVisionRows, refreshSupplemental } from '../shared/benchmarks/sources.ts'
 
 const server = await createServer({ configFile: false, server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, entries: [] }, appType: 'custom' })
 after(() => server.close())
@@ -89,6 +89,45 @@ test('failed sources retain original timestamps and are marked stale', async () 
   assert.equal(updated.sources[0].status, 'stale')
   assert.equal(updated.sources[0].fetchedAt, '2026-01-01')
   assert.equal(updated.sources[1].status, 'unavailable')
+})
+
+test('Vision ranks image understanding results, keeps zero, and excludes other categories and older releases', () => {
+  const row = { model_name: 'Claude Vision', organization: 'anthropic', license: 'Proprietary', rating: 1300, category: 'overall', leaderboard_publish_date: now.slice(0, 10) }
+  const models = arenaVisionRows([
+    row,
+    { ...row, model_name: 'Open Vision', organization: 'alibaba', license: 'Apache-2.0', rating: 1250 },
+    { ...row, model_name: 'Zero', rating: 0 },
+    { ...row, model_name: 'Unknown', rating: null },
+    { ...row, model_name: 'Caption', category: 'captioning', rating: 1500 },
+    { ...row, model_name: 'Old', leaderboard_publish_date: '2025-01-01', rating: 1600 },
+  ], now)
+  const ranked = rankModels([...models, model('coding', { artificial_analysis_coding_index: 99 })], 'vision')
+  assert.deepEqual(ranked.map((m) => m.name), ['Claude Vision', 'Open Vision', 'Zero'])
+  assert.equal(ranked[0].benchmark.unit, 'elo')
+  assert.equal(ranked[0].benchmark.publishedAt, row.leaderboard_publish_date)
+  assert.equal(ranked[0].model_creator.name, 'Anthropic')
+  assert.equal(ranked[0].open_weights, false)
+  assert.equal(ranked[1].open_weights, true)
+  assert.equal(ranked[0].requestCost, Infinity)
+  assert.equal(ranked[0].valueScore, 0)
+})
+
+test('Vision refresh reads every dataset page and retains the previous snapshot when a page fails', async () => {
+  const record = (index) => ({ row: { model_name: `Vision ${index}`, organization: 'openai', license: 'Proprietary', rating: 1300 - index, category: 'overall', leaderboard_publish_date: now.slice(0, 10) } })
+  const fetcher = async (url) => {
+    if (!url.startsWith('https://datasets-server.huggingface.co/rows?')) throw new Error('offline')
+    const offset = Number(new URL(url).searchParams.get('offset'))
+    return Response.json({ num_rows_total: 101, rows: offset === 0 ? Array.from({ length: 100 }, (_, index) => record(index)) : [record(100)] })
+  }
+  const updated = await refreshSupplemental(undefined, fetcher, now)
+  assert.equal(updated.models.length, 101)
+  assert.equal(updated.sources.find((s) => s.id === 'arena-vision').status, 'ok')
+  const failed = await refreshSupplemental(updated, async (url) => {
+    if (new URL(url).searchParams.get('offset') === '100') throw new Error('page unavailable')
+    return fetcher(url)
+  }, now)
+  assert.equal(failed.models.length, 101)
+  assert.equal(failed.sources.find((s) => s.id === 'arena-vision').status, 'stale')
 })
 
 test('OpenRouter prices require unique exact model identity and preserve qualifiers', () => {

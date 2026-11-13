@@ -1,5 +1,6 @@
 import {
   Brain,
+  Eye,
   Code,
   ImageSquare,
   Lightning,
@@ -20,6 +21,7 @@ import type { Icon } from '@phosphor-icons/react'
 const TASK_ICONS: Record<TaskId, Icon> = {
   coding: Code,
   agents: Robot,
+  vision: Eye,
   math: MathOperations,
   intelligence: Brain,
   longcontext: TextAlignLeft,
