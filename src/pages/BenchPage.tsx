@@ -13,6 +13,7 @@ import { useFavorites } from '../hooks/useFavorites'
 import { useModels } from '../hooks/useModels'
 import { useI18n } from '../i18n/I18nProvider'
 import { downloadText, rankedToCsv } from '../lib/export'
+import { chartable } from '../lib/charts'
 import { bestValueModels, modelsForTask, rankModels, TASK_IDS } from '../lib/ranking'
 import type { SortKey, TaskId } from '../types/models'
 
@@ -107,6 +108,7 @@ export function BenchPage() {
 
   const bestFp = useMemo(() => bestValueModels(ranked, 3), [ranked])
   const performanceRanked = useMemo(() => rankModels(models, task, 'score'), [models, task])
+  const showFrontier = task !== 'presentation' && chartable(ranked, task).length >= 3
   const isMedia = task === 'image' || task === 'speech' || task === 'video' || task === 'presentation'
 
   const updateParams = (mutate: (p: URLSearchParams) => void) => {
@@ -189,8 +191,8 @@ export function BenchPage() {
         </div>
       ) : (
         <>
-          <div className={`mb-6 grid gap-4 ${task !== 'presentation' ? 'lg:grid-cols-[1.2fr_0.8fr]' : ''}`}>
-            {task !== 'presentation' && <FrontierChart models={ranked} task={task} />}
+          <div className={`mb-6 grid gap-4 ${showFrontier ? 'lg:grid-cols-[1.2fr_0.8fr]' : ''}`}>
+            {showFrontier && <FrontierChart models={ranked} task={task} />}
             <RankBars models={ranked} task={task} />
           </div>
 

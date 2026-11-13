@@ -16,9 +16,11 @@ import type { RankedModel, TaskId } from '../types/models'
 export function BestFpCard({
   models,
   task,
+  variant = 'value',
 }: {
   models: RankedModel[]
   task: TaskId
+  variant?: 'value' | 'performance'
 }) {
   const { t } = useI18n()
   if (models.length === 0) return null
@@ -30,9 +32,9 @@ export function BestFpCard({
       <div className="mb-3 flex items-end justify-between gap-3">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-cyan">
-            {t('bestFp')}
+            {t(variant === 'performance' ? (models[0]?.benchmark?.historical ? 'historicalLeader' : 'bestPerformance') : 'bestFp')}
           </p>
-          <p className="mt-1 text-xs text-mercury-mute">{t('bestFpHint')}</p>
+          <p className="mt-1 text-xs text-mercury-mute">{t(variant === 'performance' ? 'bestPerformanceHint' : 'bestFpHint')}</p>
         </div>
       </div>
       <motion.ol
@@ -68,7 +70,9 @@ export function BestFpCard({
                         {index + 1}
                       </span>
                       <span className="font-mono text-[11px] text-cyan">
-                        {formatScore(model.valueScore, 2)}×
+                        {variant === 'performance'
+                          ? formatScore(model.score, benchmarkDigits(model.benchmark, isMedia ? 0 : 1))
+                          : `${formatScore(model.valueScore, 2)}×`}
                       </span>
                     </div>
                     <p className="mt-3 line-clamp-2 min-h-[3.25rem] text-lg font-medium leading-snug text-mercury">

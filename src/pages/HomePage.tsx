@@ -1,6 +1,5 @@
 import { ArrowRight, ChartBar, GitBranch, Newspaper, Plugs, Scales } from '@phosphor-icons/react'
 import { useMemo, useState } from 'react'
-import { BestPerformanceCard } from '../components/BestPerformanceCard'
 import { ComparePanel } from '../components/ComparePanel'
 import { MagneticLink } from '../components/MagneticLink'
 import { MercuryOrb } from '../components/MercuryOrb'
@@ -97,10 +96,7 @@ export function HomePage() {
           <TaskPicker value={task} onChange={setTask} compact />
         </div>
         {loading ? <SkeletonBlock className="h-44" /> : (
-          <div className="space-y-5">
-            <BestPerformanceCard models={ranked} task={task} />
-            <TopTeaser models={ranked} task={task} hideHeader />
-          </div>
+          <TopTeaser models={ranked} task={task} hideHeader />
         )}
       </section>
 

@@ -199,11 +199,7 @@ export function FrontierChart({
   const line = frontier.map((p) => `${p.x},${p.y}`).join(' ')
 
   if (points.length < 3) {
-    return (
-      <div className="panel flex h-full min-h-[280px] items-center justify-center rounded-2xl p-6 text-sm text-mercury-mute">
-        {t('chartEmpty')}
-      </div>
-    )
+    return null
   }
 
   return (
