@@ -145,25 +145,26 @@ export function BenchPage() {
         </div>
       ) : (
         <>
+          <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label={t('sortScore')}>
+            {(['performance', 'value'] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={highlight === option}
+                onClick={() => setSort(option === 'value' ? 'value' : 'score')}
+                className={`rounded-full border px-4 py-2 text-sm transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan ${highlight === option ? 'border-cyan/40 bg-cyan/10 text-cyan' : 'border-white/10 text-mercury-mute hover:border-cyan/30 hover:text-mercury'}`}
+              >
+                {t(option === 'performance' ? 'bestPerformance' : 'bestFp')}
+              </button>
+            ))}
+          </div>
+
           <div className={`mb-6 grid gap-4 ${showFrontier ? 'lg:grid-cols-[1.2fr_0.8fr]' : ''}`}>
             {showFrontier && <FrontierChart models={ranked} task={task} />}
             <RankBars models={ranked} task={task} />
           </div>
 
           <div className="mb-6">
-            <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label={t('sortScore')}>
-              {(['performance', 'value'] as const).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  aria-pressed={highlight === option}
-                  onClick={() => setSort(option === 'value' ? 'value' : 'score')}
-                  className={`rounded-full border px-4 py-2 text-sm transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan ${highlight === option ? 'border-cyan/40 bg-cyan/10 text-cyan' : 'border-white/10 text-mercury-mute hover:border-cyan/30 hover:text-mercury'}`}
-                >
-                  {t(option === 'performance' ? 'bestPerformance' : 'bestFp')}
-                </button>
-              ))}
-            </div>
             <BestPerformanceCard
               key={highlight}
               models={highlight === 'performance' ? performanceRanked : bestFp}
