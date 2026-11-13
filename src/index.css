@@ -215,3 +215,113 @@
     animation: none !important;
   }
 }
+
+/* Let content shrink inside grids without widening the page. */
+@layer base {
+  html {
+    scroll-padding-top: 6rem;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  main {
+    overflow-wrap: anywhere;
+  }
+
+  .grid > * {
+    min-width: 0;
+  }
+
+  img, video {
+    max-width: 100%;
+  }
+}
+
+.site-header {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+#site-navigation {
+  max-height: calc(100dvh - 6rem - env(safe-area-inset-top, 0px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.table-scroll {
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-mercury-mute) var(--color-ink-panel);
+}
+
+.comparison-table th:not(:first-child),
+.comparison-table td:not(:first-child) {
+  min-width: 11rem;
+}
+
+.comparison-table th:first-child,
+.comparison-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 8rem;
+  max-width: 10rem;
+  background: var(--color-ink-panel);
+  box-shadow: 1px 0 var(--color-ink-line);
+}
+
+.compare-dock {
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (max-width: 767px) {
+  /* Keep text entry legible and prevent automatic zoom on iOS. */
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+    min-height: 44px;
+    max-width: 100%;
+    font-size: 16px;
+  }
+
+  button, a[class*="rounded"] {
+    min-height: 44px;
+  }
+
+  button[aria-label], a[aria-label][class*="rounded"] {
+    min-width: 44px;
+  }
+
+  main > header, main > div, main > section {
+    min-width: 0;
+  }
+
+  .comparison-table th:first-child,
+  .comparison-table td:first-child {
+    min-width: 7rem;
+    max-width: 7rem;
+    padding-inline: 0.75rem;
+  }
+}
+
+/* Keep content clear of camera cutouts in landscape as well as portrait. */
+.page-gutter {
+  padding-left: max(1rem, env(safe-area-inset-left, 0px));
+  padding-right: max(1rem, env(safe-area-inset-right, 0px));
+}
+
+@media (min-width: 768px) {
+  .page-gutter {
+    padding-left: max(2rem, env(safe-area-inset-left, 0px));
+    padding-right: max(2rem, env(safe-area-inset-right, 0px));
+  }
+}
+
+.install-dialog::backdrop {
+  background: rgb(0 0 0 / 75%);
+  backdrop-filter: blur(6px);
+}
+
+.install-dialog {
+  overflow-wrap: anywhere;
+}
+
+body:has(.install-dialog[open]) {
+  overflow: hidden;
+}

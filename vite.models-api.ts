@@ -1,5 +1,6 @@
 import type { Plugin } from 'vite'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { historyPoints, historyQuery, historySnapshot, type HistorySnapshot } from './shared/modelHistory.ts'
 import { dirname, resolve } from 'node:path'
 import {
   fallbackPayload,
@@ -103,18 +104,63 @@ async function respond(root: string) {
   return stale(result.reason, cooldownUntil)
 }
 
+function archiveDev(root: string, payload: ModelsPayload) {
+  const snapshot = historySnapshot(payload)
+  if (!snapshot || !Object.keys(snapshot.models).length) return
+  const directory = resolve(root, '.cache/mercury/history')
+  mkdirSync(directory, { recursive: true })
+  const path = resolve(directory, `${snapshot.at.slice(0, 10)}.json`)
+  try {
+    writeFileSync(path, JSON.stringify(snapshot), { flag: 'wx' })
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
+  }
+}
+
+function readDevHistory(root: string, slug: string, days: number) {
+  const directory = resolve(root, '.cache/mercury/history')
+  if (!existsSync(directory)) return { points: [], available: true }
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10)
+  const snapshots = readdirSync(directory).filter((name) => /^\d{4}-\d{2}-\d{2}\.json$/.test(name) && name.slice(0, 10) >= cutoff)
+    .sort().slice(-366).map((name) => JSON.parse(readFileSync(resolve(directory, name), 'utf8')) as HistorySnapshot)
+  return { points: historyPoints(snapshots, slug, days), available: true }
+}
+
 export function modelsApiPlugin(): Plugin {
   let inflight: Promise<unknown> | null = null
   return {
     name: 'mercury-models-api',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
-        if (!req.url?.startsWith('/api/models')) return next()
+        const url = new URL(req.url ?? '/', 'http://localhost')
+        if (url.pathname !== '/api/models' && url.pathname !== '/api/model-history') return next()
         res.setHeader('Content-Type', 'application/json')
+        if (req.method !== 'GET') {
+          res.statusCode = 405
+          res.end(JSON.stringify({ error: 'Method not allowed' }))
+          return
+        }
+        if (url.pathname === '/api/model-history') {
+          const query = historyQuery(url)
+          if (!query) {
+            res.statusCode = 400
+            res.end(JSON.stringify({ error: 'Invalid history query' }))
+            return
+          }
+          try {
+            res.end(JSON.stringify(readDevHistory(server.config.root, query.slug, query.days)))
+          } catch {
+            res.statusCode = 503
+            res.end(JSON.stringify({ points: [], available: false }))
+          }
+          return
+        }
         inflight ??= respond(server.config.root).finally(() => {
           inflight = null
         })
-        res.end(JSON.stringify(await inflight))
+        const payload = await inflight as ModelsPayload
+        try { archiveDev(server.config.root, payload) } catch { /* Model responses remain available if history storage fails. */ }
+        res.end(JSON.stringify(payload))
       })
     },
   }

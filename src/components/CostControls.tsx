@@ -38,7 +38,7 @@ export function CostControls({
   )
 
   const field =
-    'w-28 rounded-lg border border-white/8 bg-ink px-3 py-1.5 font-mono text-sm text-mercury outline-none focus:border-cyan/40'
+    'w-full min-w-0 rounded-lg border border-white/8 bg-ink px-3 py-1.5 font-mono text-sm text-mercury outline-none focus:border-cyan/40'
 
   return (
     <section className="panel mb-6 rounded-2xl p-4">

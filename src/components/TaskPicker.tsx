@@ -8,6 +8,8 @@ import {
   Robot,
   TextAlignLeft,
   Waveform,
+  VideoCamera,
+  PresentationChart,
 } from '@phosphor-icons/react'
 import { motion } from 'motion/react'
 import { TASKS } from '../i18n/messages'
@@ -23,6 +25,8 @@ const TASK_ICONS: Record<TaskId, Icon> = {
   longcontext: TextAlignLeft,
   instruction: ListChecks,
   image: ImageSquare,
+  video: VideoCamera,
+  presentation: PresentationChart,
   speech: Waveform,
   speed: Lightning,
 }
@@ -48,7 +52,7 @@ export function TaskPicker({
       <div
         className={`grid gap-2 ${
           compact
-            ? 'grid-cols-3 sm:grid-cols-5 lg:grid-cols-9'
+            ? 'grid-cols-2 min-[400px]:grid-cols-3 sm:grid-cols-4 xl:grid-cols-6'
             : 'grid-cols-1 sm:grid-cols-3'
         }`}
         role="tablist"
@@ -64,7 +68,7 @@ export function TaskPicker({
               role="tab"
               aria-selected={active}
               onClick={() => onChange(task.id)}
-              className={`group relative overflow-hidden rounded-xl border px-4 py-3 text-left transition duration-200 ${
+              className={`group relative min-w-0 overflow-hidden rounded-xl border px-3 py-3 sm:px-4 text-left transition duration-200 ${
                 active
                   ? 'border-cyan/40 bg-cyan/10 shadow-[0_0_24px_-12px_rgba(94,234,212,0.8)]'
                   : 'border-white/8 bg-ink-elevated/50 hover:border-mercury-mute/40 hover:bg-ink-panel'
@@ -77,13 +81,13 @@ export function TaskPicker({
                   transition={{ type: 'spring', stiffness: 380, damping: 32 }}
                 />
               )}
-              <span className="relative flex items-start gap-2.5">
+              <span className="relative flex min-w-0 items-start gap-2">
                 <Icon
                   size={18}
                   weight={active ? 'duotone' : 'regular'}
-                  className={active ? 'text-cyan' : 'text-mercury-mute'}
+                  className={`shrink-0 ${active ? 'text-cyan' : 'text-mercury-mute'}`}
                 />
-                <span>
+                <span className="min-w-0 [overflow-wrap:anywhere]">
                   <span
                     className={`block text-sm font-medium ${
                       active ? 'text-cyan' : 'text-mercury'

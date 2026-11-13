@@ -1,31 +1,44 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  applyLegacyEvaluations,
   normalizeIncomingModels,
   normalizeLanguageModel,
   normalizeMediaModel,
-  type LegacyEvaluations,
 } from '../lib/normalize'
 import type { MessageKey } from '../i18n/messages'
-import type { AiModel, ModelsResponse } from '../types/models'
+import type { AiModel, ModelsResponse, SupplementalData } from '../types/models'
+
+import { attachArtificialAnalysis, mergeSupplemental } from '../lib/benchmarks'
 
 const REFRESH_MS = 10 * 60 * 1000
 
-let legacyPromise: Promise<LegacyEvaluations> | null = null
-
-// Lazy-loaded (and cached) so the frozen Math / Agents scores stay out of the main bundle.
-function loadLegacy(): Promise<LegacyEvaluations> {
-  legacyPromise ??= import('../data/legacy-evaluations.json')
-    .then((mod) => (mod.default as { models: LegacyEvaluations }).models)
-    .catch(() => {
-      legacyPromise = null
-      return {}
-    })
-  return legacyPromise
+let archivePromise: Promise<AiModel[]> | null = null
+function loadArchive(): Promise<AiModel[]> {
+  archivePromise ??= import('../data/archive-models.json').then((mod) => {
+    const snapshot = mod.default
+    return attachArtificialAnalysis(normalizeIncomingModels(snapshot), snapshot.fetchedAt).map((model) => ({
+      ...model, id: `aa-archive:${model.id}`, slug: `aa-archive--${model.slug}`,
+      benchmarks: model.benchmarks?.map((result) => ({ ...result, historical: true })),
+    }))
+  })
+  return archivePromise
 }
 
-async function withLegacy(result: ModelsResponse): Promise<ModelsResponse> {
-  return { ...result, data: applyLegacyEvaluations(result.data, await loadLegacy()) }
+async function loadSupplemental(): Promise<SupplementalData> {
+  try {
+    const response = await fetch('/api/benchmarks', { cache: 'no-store', signal: AbortSignal.timeout(20000) })
+    if (response.ok) {
+      const json = await response.json()
+      if (Array.isArray(json.models) && Array.isArray(json.prices) && Array.isArray(json.sources)) return json
+    }
+  } catch { /* use the last successful bundled observations */ }
+  const bundled = (await import('../data/benchmark-sources.json')).default as SupplementalData
+  return { ...bundled, sources: bundled.sources.map((source) => ({ ...source, status: !source.fetchedAt ? 'unavailable' : Date.now() - Date.parse(source.fetchedAt) > 24 * 3600000 ? 'stale' : source.status })) }
+}
+
+async function loadDataset(): Promise<ModelsResponse> {
+  const [result, archive, supplemental] = await Promise.all([loadModels(), loadArchive(), loadSupplemental()])
+  const current = attachArtificialAnalysis(result.data, result.fetchedAt)
+  return { ...result, data: mergeSupplemental([...current, ...archive], supplemental), sources: supplemental.sources }
 }
 
 // Lazy-loaded so the full fallback dataset stays out of the main bundle.
@@ -34,13 +47,15 @@ async function fromFallback(): Promise<ModelsResponse> {
     language?: Record<string, unknown>[]
     image?: Record<string, unknown>[]
     speech?: Record<string, unknown>[]
+    video?: Record<string, unknown>[]
     fetchedAt?: string
   }
   const language = (fb.language ?? []).map(normalizeLanguageModel)
   const image = (fb.image ?? []).map((m) => normalizeMediaModel(m, 'image'))
   const speech = (fb.speech ?? []).map((m) => normalizeMediaModel(m, 'speech'))
+  const video = (fb.video ?? []).map((m) => normalizeMediaModel(m, 'video'))
   return {
-    data: [...language, ...image, ...speech],
+    data: [...language, ...image, ...speech, ...video],
     fetchedAt: fb.fetchedAt ?? new Date().toISOString(),
     source: 'fallback',
   }
@@ -86,11 +101,12 @@ export function useModels() {
   const refresh = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
     try {
-      const result = await withLegacy(await loadModels())
+      const result = await loadDataset()
       setData(result)
       setError(result.source === 'fallback' || Boolean(result.stale))
     } catch {
-      setData(await withLegacy(await fromFallback()))
+      const fallback = await fromFallback()
+      setData({ ...fallback, data: attachArtificialAnalysis(fallback.data, fallback.fetchedAt) })
       setError(true)
     } finally {
       setLoading(false)

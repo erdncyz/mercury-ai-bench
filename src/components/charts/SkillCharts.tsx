@@ -100,7 +100,7 @@ export function SkillCharts({
             )
           })}
         </svg>
-        <div className="mt-2 flex justify-center gap-4 font-mono text-[11px] text-mercury-mute">
+        <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-2 font-mono text-[11px] text-mercury-mute">
           <span className="inline-flex items-center gap-1.5">
             <i className="h-2 w-2 rounded-full bg-cyan" /> {model.name}
           </span>
@@ -120,7 +120,7 @@ export function SkillCharts({
             const fieldPct = fieldMedians[index]
             return (
               <li key={axis.id}>
-                <div className="mb-1.5 flex justify-between text-sm">
+                <div className="mb-1.5 flex justify-between gap-3 text-sm">
                   <span className="text-mercury">{t(axis.id as MessageKey)}</span>
                   <span className="font-mono text-xs text-cyan">
                     {Math.round(modelPct)}

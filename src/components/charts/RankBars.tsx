@@ -1,3 +1,4 @@
+import { benchmarkDigits, modelPath } from '../../lib/benchmarks'
 import { motion, useReducedMotion } from 'motion/react'
 import { Link } from 'react-router-dom'
 import { useI18n } from '../../i18n/I18nProvider'
@@ -36,7 +37,7 @@ export function RankBars({
           return (
             <li key={model.id}>
               <Link
-                to={`/model/${model.slug}?task=${task}`}
+                to={modelPath(model, task)}
                 className="group block"
                 title={`${model.name} · ${model.model_creator.name}`}
               >
@@ -53,7 +54,7 @@ export function RankBars({
                     <span className="truncate">{shortModelName(model.name)}</span>
                   </span>
                   <span className="shrink-0 font-mono text-[11px] text-mercury-dim">
-                    {formatScore(model.score, digits)}
+                    {formatScore(model.score, benchmarkDigits(model.benchmark, digits))}
                   </span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-white/5">

@@ -1,5 +1,8 @@
+import { BenchmarkMeta, PriceMeta } from './BenchmarkMeta'
+import { benchmarkDigits, modelPath } from '../lib/benchmarks'
 import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
+import { FavoriteButton } from './FavoriteButton'
 import { useI18n } from '../i18n/I18nProvider'
 import { creatorColor } from '../lib/creatorColors'
 import { fadeUp, hoverLift, staggerFast } from '../lib/motion'
@@ -7,7 +10,6 @@ import {
   formatMediaPrice,
   formatScore,
   formatUsd,
-  shortModelName,
 } from '../lib/ranking'
 import type { RankedModel, TaskId } from '../types/models'
 
@@ -21,7 +23,7 @@ export function BestFpCard({
   const { t } = useI18n()
   if (models.length === 0) return null
 
-  const isMedia = task === 'image' || task === 'speech'
+  const isMedia = task === 'image' || task === 'speech' || task === 'video' || task === 'presentation'
 
   return (
     <section>
@@ -46,13 +48,11 @@ export function BestFpCard({
 
           return (
             <motion.li key={model.id} className="min-w-0" variants={fadeUp}>
-              <motion.div whileHover={hoverLift} className="h-full">
+              <motion.div whileHover={hoverLift} className={`panel relative flex h-full flex-col overflow-hidden rounded-2xl transition hover:border-cyan/40 ${index === 0 ? 'panel-glow border-cyan/30' : ''}`}>
                 <Link
-                  to={`/model/${model.slug}?task=${task}`}
+                  to={modelPath(model, task)}
                   title={model.name}
-                  className={`panel relative flex h-full min-h-[176px] flex-col overflow-hidden rounded-2xl p-5 transition hover:border-cyan/40 ${
-                    index === 0 ? 'panel-glow border-cyan/30' : ''
-                  }`}
+                  className="relative flex min-h-[176px] flex-1 flex-col p-5"
                 >
                   {index === 0 && (
                     <div
@@ -61,7 +61,7 @@ export function BestFpCard({
                     />
                   )}
                   <div className="relative flex h-full flex-col">
-                    <div className="flex items-baseline justify-between">
+                    <div className="flex items-baseline justify-between pr-11">
                       <span
                         className={`${index === 0 ? 'rank-gold' : 'rank-metal'} font-display text-3xl`}
                       >
@@ -72,7 +72,7 @@ export function BestFpCard({
                       </span>
                     </div>
                     <p className="mt-3 line-clamp-2 min-h-[3.25rem] text-lg font-medium leading-snug text-mercury">
-                      {shortModelName(model.name)}
+                      {model.name}
                     </p>
                     <p className="flex items-center gap-1.5 truncate text-sm text-mercury-mute">
                       <span
@@ -84,12 +84,14 @@ export function BestFpCard({
                     </p>
                     <div className="mt-auto flex items-center justify-between border-t border-white/8 pt-3 font-mono text-xs">
                       <span className="text-mercury-dim">
-                        {t('score')} {formatScore(model.score, isMedia ? 0 : 1)}
+                        {t('score')} {formatScore(model.score, benchmarkDigits(model.benchmark, isMedia ? 0 : 1))}
                       </span>
                       <span className="text-cyan">{priceLabel}</span>
                     </div>
                   </div>
                 </Link>
+                <div className="px-5 pb-3"><BenchmarkMeta result={model.benchmark} compact /><PriceMeta pricing={model.pricing} /></div>
+                <FavoriteButton slug={model.slug} className="absolute right-4 top-4" />
               </motion.div>
             </motion.li>
           )

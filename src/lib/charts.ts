@@ -2,7 +2,7 @@ import { agentsScore, codingScore } from './ranking'
 import type { RankedModel, TaskId } from '../types/models'
 
 export function modelPrice(model: RankedModel, task: TaskId): number | null {
-  if (task === 'image' || task === 'speech') {
+  if (task === 'image' || task === 'speech' || task === 'video' || task === 'presentation') {
     const unit = model.pricing.price_unit ?? model.pricing.price_1m_blended_3_to_1
     return unit != null && unit > 0 ? unit : null
   }

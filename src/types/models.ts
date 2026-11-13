@@ -6,12 +6,46 @@ export type TaskId =
   | 'longcontext'
   | 'instruction'
   | 'image'
+  | 'video'
+  | 'presentation'
   | 'speech'
   | 'speed'
 
 export type SortKey = 'score' | 'price' | 'speed' | 'value'
 
-export type ModelKind = 'language' | 'image' | 'speech'
+export type ModelKind = 'language' | 'image' | 'speech' | 'video' | 'presentation'
+
+export interface BenchmarkResult {
+  /** A comparable cohort: source, benchmark, version and evaluation configuration. */
+  id: string
+  task: TaskId
+  label: string
+  source: string
+  sourceUrl: string
+  version: string | null
+  score: number
+  collectedAt: string
+  evaluatedAt: string | null
+  publishedAt?: string
+  historical: boolean
+  configuration?: string
+  unit: 'index' | 'percent' | 'fraction' | 'elo' | 'tokens/s'
+}
+
+export interface SourceStatus {
+  id: string
+  name: string
+  url: string
+  status: 'ok' | 'stale' | 'unavailable'
+  fetchedAt: string | null
+}
+
+export interface SupplementalData {
+  models: AiModel[]
+  sources: SourceStatus[]
+  prices: { id: string; name: string; input: number; output: number; collectedAt: string; url: string }[]
+  checkedAt: string
+}
 
 export interface ModelCreator {
   id: string
@@ -45,15 +79,22 @@ export interface ModelEvaluations {
 }
 
 export interface ModelPricing {
+  provenance?: {
+    source: string
+    url: string
+    collectedAt: string | null
+    estimated: boolean
+  }
   price_1m_blended_3_to_1: number | null
   price_1m_input_tokens: number | null
   price_1m_output_tokens: number | null
   /** Media: USD per 1k images or per 1M characters */
   price_unit?: number | null
-  price_unit_label?: 'per_1k_images' | 'per_1m_chars' | null
+  price_unit_label?: 'per_1k_images' | 'per_1m_chars' | 'per_minute' | null
 }
 
 export interface AiModel {
+  benchmarks?: BenchmarkResult[]
   id: string
   name: string
   slug: string
@@ -73,6 +114,7 @@ export interface AiModel {
 }
 
 export interface ModelsResponse {
+  sources?: SourceStatus[]
   status?: number
   data: AiModel[]
   fetchedAt: string
@@ -91,6 +133,7 @@ export interface CostScenario {
 }
 
 export interface RankedModel extends AiModel {
+  benchmark?: BenchmarkResult
   rank: number
   score: number
   valueScore: number

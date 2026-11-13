@@ -25,6 +25,10 @@ const ENDPOINTS = {
     'https://artificialanalysis.ai/api/v2/media/text-to-speech/models',
     'https://artificialanalysis.ai/api/v2/media/text-to-speech/models/free',
   ],
+  video: [
+    'https://artificialanalysis.ai/api/v2/media/text-to-video/models',
+    'https://artificialanalysis.ai/api/v2/media/text-to-video/models/free',
+  ],
 } as const
 
 export type FailureReason = 'missing-key' | 'rate-limited' | 'upstream-error'
@@ -33,6 +37,7 @@ export interface ModelsPayload {
   language: unknown[]
   image: unknown[]
   speech: unknown[]
+  video?: unknown[]
   data: unknown[]
   tier?: string
   fetchedAt: string
@@ -102,10 +107,12 @@ export async function fetchModels(apiKey: string | undefined, freeOnly = false):
     const language = await fetchPaged(ENDPOINTS.language, apiKey, state)
     const image = await fetchPaged(ENDPOINTS.image, apiKey, state)
     const speech = await fetchPaged(ENDPOINTS.speech, apiKey, state)
+    const video = await fetchPaged(ENDPOINTS.video, apiKey, state)
     if (!language?.data.length) return { ok: false, reason: 'upstream-error', freeOnly: state.freeOnly }
 
     const imageRows = (image?.data ?? []).map((m) => ({ ...(m as object), kind: 'image' }))
     const speechRows = (speech?.data ?? []).map((m) => ({ ...(m as object), kind: 'speech' }))
+    const videoRows = (video?.data ?? []).map((m) => ({ ...(m as object), kind: 'video' }))
     return {
       ok: true,
       freeOnly: state.freeOnly,
@@ -113,7 +120,8 @@ export async function fetchModels(apiKey: string | undefined, freeOnly = false):
         language: language.data,
         image: imageRows,
         speech: speechRows,
-        data: [...language.data, ...imageRows, ...speechRows],
+        video: videoRows,
+        data: [...language.data, ...imageRows, ...speechRows, ...videoRows],
         tier: language.tier ?? image?.tier ?? speech?.tier,
         fetchedAt: new Date().toISOString(),
       },
@@ -131,17 +139,20 @@ export function fallbackPayload(raw: unknown): ModelsPayload {
     language?: unknown[]
     image?: unknown[]
     speech?: unknown[]
+    video?: unknown[]
     data?: unknown[]
     fetchedAt?: string
   }
   const language = fb.language ?? fb.data ?? (Array.isArray(raw) ? raw : [])
   const image = fb.image ?? []
   const speech = fb.speech ?? []
+  const video = fb.video ?? []
   return {
     language,
     image,
     speech,
-    data: [...language, ...image, ...speech],
+    video,
+    data: [...language, ...image, ...speech, ...video],
     fetchedAt: fb.fetchedAt ?? new Date().toISOString(),
   }
 }

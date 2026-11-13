@@ -17,11 +17,11 @@ export function PageShell({
   wide?: boolean
 }) {
   return (
-    <div className="relative flex min-h-screen flex-col">
+    <div className="relative flex min-h-dvh flex-col">
       <AmbientBackground />
       <SiteHeader />
       <motion.main
-        className={`relative z-10 mx-auto w-full flex-1 px-5 pb-16 pt-8 md:px-8 ${
+        className={`page-gutter relative z-10 mx-auto w-full min-w-0 flex-1 px-4 pb-20 pt-6 sm:pt-8 md:px-8 ${
           wide ? 'max-w-7xl' : 'max-w-6xl'
         }`}
         variants={pageEnter}

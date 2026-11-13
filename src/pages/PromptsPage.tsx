@@ -1,8 +1,9 @@
 import { MagnifyingGlass } from '@phosphor-icons/react'
-import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { PageShell, SkeletonBlock } from '../components/PageShell'
 import { PromptCard } from '../components/PromptCard'
+import { PromptLibrary } from '../components/PromptLibrary'
 import { PROMPT_GROUPS, PROMPT_SECTIONS, usePrompts, type PromptSort } from '../hooks/usePrompts'
 import { useI18n } from '../i18n/I18nProvider'
 
@@ -11,6 +12,21 @@ function parseSection(value: string | null) {
 }
 
 export function PromptsPage() {
+  const { locale, t } = useI18n()
+  const [params, setParams] = useSearchParams()
+  const live = params.get('view') === 'live' || (!!params.get('section') && params.get('view') !== 'library')
+  const switcher = <div className="mb-6">
+      <Link to="/workspace" className="mb-3 flex min-h-11 w-fit items-center rounded-lg border border-cyan/40 px-4 text-sm text-cyan">{t('workspaceOpen')}</Link>
+      <nav aria-label={locale === 'tr' ? 'Prompt koleksiyonları' : 'Prompt collections'} className="inline-flex flex-wrap gap-1 rounded-xl border border-white/10 bg-ink-panel p-1">
+        {(['library', 'live'] as const).map(view => <button key={view} type="button" aria-pressed={live === (view === 'live')} onClick={() => setParams(prev => { const next = new URLSearchParams(prev); next.set('view', view); return next }, { replace: true })} className={`rounded-lg px-4 py-2 text-sm ${live === (view === 'live') ? 'bg-cyan/10 text-cyan' : 'text-mercury-mute hover:text-mercury'}`}>
+          {view === 'library' ? (locale === 'tr' ? 'Görsel kütüphane' : 'Visual library') : (locale === 'tr' ? 'Topluluk promptları' : 'Community prompts')}
+        </button>)}
+      </nav>
+    </div>
+  return live ? <LivePromptsPage switcher={switcher} /> : <PageShell wide>{switcher}<header className="mb-8"><h1 className="font-display text-4xl text-mercury md:text-5xl">Prompts</h1></header><PromptLibrary /></PageShell>
+}
+
+function LivePromptsPage({ switcher }: { switcher: ReactNode }) {
   const { t, locale } = useI18n()
   const [params, setParams] = useSearchParams()
   const section = parseSection(params.get('section'))
@@ -52,6 +68,7 @@ export function PromptsPage() {
 
   return (
     <PageShell fetchedAt={fetchedAt} source={source} wide>
+      {switcher}
       <header className="mb-6">
         <h1 className="font-display text-4xl text-mercury md:text-5xl">{t('navPrompts')}</h1>
         <p className="mt-2 max-w-2xl text-sm text-mercury-mute">{t('promptsHint')}</p>
@@ -105,7 +122,7 @@ export function PromptsPage() {
       )}
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <label className="relative min-w-0 flex-1 sm:max-w-sm">
+        <label className="relative w-full min-w-0 basis-full sm:flex-1 sm:basis-auto sm:max-w-sm">
           <MagnifyingGlass
             size={16}
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-mercury-mute"

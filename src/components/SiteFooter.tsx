@@ -1,4 +1,5 @@
 import { ArrowUpRight } from '@phosphor-icons/react'
+import { InstallAppButton } from './PwaProvider'
 import { useI18n } from '../i18n/I18nProvider'
 
 export function SiteFooter({
@@ -28,11 +29,12 @@ export function SiteFooter({
 
   return (
     <footer className="relative z-10 mt-auto border-t border-white/8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-8 text-sm text-mercury-mute md:flex-row md:items-center md:justify-between md:px-8">
+      <div className="page-gutter mx-auto flex max-w-7xl flex-col gap-3 px-4 py-8 text-sm text-mercury-mute md:flex-row md:items-center md:justify-between md:px-8">
         <div>
           <p className="font-display text-lg text-mercury/85">{t('brand')}</p>
           <p className="mt-1 text-mercury-mute">{t('footerTagline')}</p>
         </div>
+        <InstallAppButton />
         <div className="flex flex-col gap-1 md:items-end">
           <a
             href="https://artificialanalysis.ai/"
@@ -45,7 +47,7 @@ export function SiteFooter({
           </a>
           {(updated || sourceLabel) && (
             <p className="font-mono text-[11px] tracking-wide">
-              {t('lastUpdated')}
+              Artificial Analysis · {t('dataCollected')}
               {updated ? `: ${updated}` : ''}
               {sourceLabel ? ` · ${sourceLabel}` : ''}
             </p>

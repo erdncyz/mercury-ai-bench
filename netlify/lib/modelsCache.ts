@@ -1,6 +1,7 @@
 // Daily model snapshot shared by the /api/models function and the scheduled refresher.
 // Lives outside netlify/functions so Netlify does not deploy it as its own function.
 import { getStore } from '@netlify/blobs'
+import { archiveModels } from './modelHistory'
 import fallbackModels from '../functions/fallback-models.json'
 import {
   fallbackPayload,
@@ -101,6 +102,7 @@ export function refreshSnapshot(): Promise<RefreshOutcome> {
       memory = { payload: result.payload, savedAt: now, origin: 'upstream' }
       memoryState = { freeOnly: result.freeOnly }
       await Promise.all([write('snapshot', { payload: memory.payload, savedAt: now }), write('state', memoryState)])
+      await archiveModels(memory.payload)
       return { ok: true, snapshot: memory }
     }
 
@@ -118,6 +120,7 @@ export function refreshSnapshot(): Promise<RefreshOutcome> {
 /** Response body for /api/models: serves the daily snapshot and only refreshes when it is older than a day. */
 export async function modelsResponseBody() {
   const snapshot = await newestSnapshot()
+  await archiveModels(snapshot.payload)
   if (Date.now() - snapshot.savedAt < SNAPSHOT_TTL_MS) {
     return { ...snapshot.payload, source: 'cache', nextRefreshAt: snapshot.savedAt + SNAPSHOT_TTL_MS }
   }

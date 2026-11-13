@@ -2,6 +2,7 @@
 
 import { ARCH_TEMPLATES, type ArchTopic, type CuratedPrompt } from './architect/index.ts'
 import { IMAGE_EDIT_PROMPTS, type EditStyle } from './imageEditPrompts.ts'
+import { classifyLibraryPrompt, type LibraryCategoryId } from './promptLibrary.ts'
 
 const API = 'https://prompts.chat/api/prompts'
 const SITE = 'https://prompts.chat'
@@ -249,6 +250,7 @@ export const PROMPT_SECTIONS: PromptSection[] = [
 ]
 
 export interface PromptItem {
+  libraryCategory?: LibraryCategoryId
   id: string
   title: string
   description: string | null
@@ -274,6 +276,8 @@ export interface PromptItem {
 export type PromptLang = 'en' | 'tr'
 
 export interface PromptsPayload {
+  /** Cached results returned after an upstream failure. */
+  stale?: boolean
   section: string
   sort: PromptSort
   q: string
@@ -298,7 +302,7 @@ export interface PromptsQuery {
 
 export function parsePromptsQuery(params: URLSearchParams): PromptsQuery {
   const sectionParam = params.get('section') ?? 'all'
-  const section = PROMPT_SECTIONS.some((s) => s.id === sectionParam) ? sectionParam : 'all'
+  const section = sectionParam === 'library' || PROMPT_SECTIONS.some((s) => s.id === sectionParam) ? sectionParam : 'all'
   const sort: PromptSort = params.get('sort') === 'top' ? 'top' : 'new'
   const q = (params.get('q') ?? '').trim().slice(0, 80)
   const pageNum = Number.parseInt(params.get('page') ?? '1', 10)
@@ -580,6 +584,25 @@ async function fetchMergedSection(
 }
 
 export async function fetchPrompts(query: PromptsQuery): Promise<PromptsPayload> {
+  if (query.section === 'library') {
+    // The latest 300 source entries are enough for a discovery feed without crawling the entire archive.
+    const pages = await Promise.all([1, 2, 3].map(page => fetchPromptsPage({ perPage: '100', page: String(page) })))
+    const unique = new Map<string, PromptItem>()
+    for (const page of pages) {
+      for (const raw of page.prompts) {
+        const item = normalize(raw)
+        const libraryCategory = classifyLibraryPrompt(item)
+        if (libraryCategory) unique.set(item.id, { ...item, libraryCategory })
+      }
+    }
+    const items = [...unique.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    return {
+      section: 'library', sort: 'new', q: '', lang: query.lang, page: 1,
+      total: items.length, totalPages: 1,
+      items: query.lang === 'en' ? items : await translateItems(items, query.lang),
+      fetchedAt: new Date().toISOString(), source: 'live',
+    }
+  }
   const section = PROMPT_SECTIONS.find((s) => s.id === query.section) ?? PROMPT_SECTIONS[0]
   if (section.merged) return fetchMergedSection(section, section.merged, query)
 
@@ -643,7 +666,7 @@ export async function handlePromptsRequest(
     return { status: 200, body: payload }
   } catch (err) {
     const stale = cache.get(key, true)
-    if (stale) return { status: 200, body: { ...stale, source: 'cache' } }
+    if (stale) return { status: 200, body: { ...stale, source: 'cache', stale: true } }
     return { status: 502, body: { error: (err as Error).message } }
   }
 }

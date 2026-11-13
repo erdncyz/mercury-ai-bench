@@ -6,7 +6,7 @@ export { PROMPT_GROUPS, PROMPT_SECTIONS } from '../../shared/prompts'
 
 const STALE_MS = 10 * 60 * 1000
 
-async function loadPrompts(
+export async function loadPrompts(
   section: string,
   sort: PromptSort,
   q: string,

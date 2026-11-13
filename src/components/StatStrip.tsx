@@ -38,15 +38,15 @@ export function StatStrip({
       animate="show"
     >
       {items.map((item) => (
-        <motion.li key={item.label} variants={fadeUp} className="panel rounded-2xl px-4 py-4">
-          <div className="flex items-center gap-2 text-mercury-mute">
-            <item.icon size={16} weight="duotone" />
+        <motion.li key={item.label} variants={fadeUp} className="panel min-w-0 rounded-2xl px-3 py-4 sm:px-4">
+          <div className="flex items-start gap-2 text-mercury-mute">
+            <item.icon size={16} weight="duotone" className="shrink-0" />
             <span className="font-mono text-[11px] uppercase tracking-[0.18em]">
               {item.label}
             </span>
           </div>
           {item.live ? (
-            <p className="mt-2 flex items-center gap-2 text-lg font-medium text-mercury">
+            <p className="mt-2 flex flex-wrap items-center gap-2 text-base sm:text-lg font-medium text-mercury">
               <span
                 className={`live-dot inline-block h-2 w-2 rounded-full ${
                   live ? 'bg-cyan' : 'bg-mercury-mute'

@@ -1,4 +1,4 @@
-import type { AiModel, ModelEvaluations, ModelKind } from '../types/models'
+import type { AiModel, ModelKind } from '../types/models'
 import { lookupMediaPrice } from '../data/media-prices'
 import { resolveOpenWeights } from './openWeights'
 
@@ -95,12 +95,16 @@ export function normalizeLanguageModel(raw: Record<string, unknown>): AiModel {
 
 export function normalizeMediaModel(
   raw: Record<string, unknown>,
-  kind: Extract<ModelKind, 'image' | 'speech'>,
+  kind: Extract<ModelKind, 'image' | 'speech' | 'video'>,
 ): AiModel {
   const name = String(raw.name)
   const slug = String(raw.slug ?? raw.id)
-  const hint = lookupMediaPrice(name, slug, kind)
+  const hint = kind === 'video' ? null : lookupMediaPrice(name, slug, kind)
   const elo = asNumber(raw.elo)
+  const pricing = (raw.pricing ?? {}) as Record<string, unknown>
+  const label = pricing.price_unit_label ?? (kind === 'video' ? 'per_minute' : kind === 'speech' ? 'per_1m_chars' : 'per_1k_images')
+  const publishedPrice = asNumber(pricing.price_unit) ?? asNumber(raw[kind === 'video' ? 'price_per_minute' : kind === 'speech' ? 'price_per_1m_characters' : 'price_per_1k_images'])
+  const price = publishedPrice ?? hint?.price ?? null
 
   const modelCreator = creator(raw.model_creator as Record<string, unknown>)
   return {
@@ -117,11 +121,17 @@ export function normalizeMediaModel(
       artificial_analysis_math_index: null,
     },
     pricing: {
-      price_1m_blended_3_to_1: hint?.price ?? null,
+      price_1m_blended_3_to_1: price,
       price_1m_input_tokens: null,
       price_1m_output_tokens: null,
-      price_unit: hint?.price ?? null,
-      price_unit_label: hint?.label ?? null,
+      price_unit: price,
+      price_unit_label: publishedPrice != null ? label as 'per_1k_images' | 'per_1m_chars' | 'per_minute' : hint?.label ?? null,
+      provenance: {
+        source: publishedPrice != null ? 'Artificial Analysis' : 'Mercury price estimate',
+        url: publishedPrice != null ? 'https://artificialanalysis.ai/' : '',
+        collectedAt: null,
+        estimated: publishedPrice == null,
+      },
     },
     median_output_tokens_per_second: null,
     median_time_to_first_token_seconds: null,
@@ -131,30 +141,11 @@ export function normalizeMediaModel(
   }
 }
 
-export type LegacyEvaluations = Record<string, Partial<Record<keyof ModelEvaluations, number>>>
-
-/**
- * Artificial Analysis stopped publishing the Math and Agentic indices (and per-benchmark
- * scores on the free tier). Fill those gaps from the last snapshot that had them, keyed by
- * the stable model id; live values always win.
- */
-export function applyLegacyEvaluations(models: AiModel[], legacy: LegacyEvaluations): AiModel[] {
-  return models.map((model) => {
-    const old = model.kind === 'language' ? legacy[model.id] : undefined
-    if (!old) return model
-    const evaluations = { ...model.evaluations }
-    for (const [key, value] of Object.entries(old) as [keyof ModelEvaluations, number][]) {
-      if (evaluations[key] == null) evaluations[key] = value
-    }
-    return { ...model, evaluations }
-  })
-}
-
 export function normalizeIncomingModels(payload: unknown): AiModel[] {
   if (!payload || typeof payload !== 'object') return []
   const obj = payload as Record<string, unknown>
 
-  if (Array.isArray(obj.language) || Array.isArray(obj.image) || Array.isArray(obj.speech)) {
+  if (Array.isArray(obj.language) || Array.isArray(obj.image) || Array.isArray(obj.speech) || Array.isArray(obj.video)) {
     const language = Array.isArray(obj.language)
       ? obj.language.map((m) => normalizeLanguageModel(m as Record<string, unknown>))
       : []
@@ -168,7 +159,8 @@ export function normalizeIncomingModels(payload: unknown): AiModel[] {
           normalizeMediaModel(m as Record<string, unknown>, 'speech'),
         )
       : []
-    return [...language, ...image, ...speech]
+    const video = Array.isArray(obj.video) ? obj.video.map((m) => normalizeMediaModel(m as Record<string, unknown>, 'video')) : []
+    return [...language, ...image, ...speech, ...video]
   }
 
   if (Array.isArray(obj.data)) {
@@ -176,6 +168,7 @@ export function normalizeIncomingModels(payload: unknown): AiModel[] {
       const row = m as Record<string, unknown>
       if (row.kind === 'image') return normalizeMediaModel(row, 'image')
       if (row.kind === 'speech') return normalizeMediaModel(row, 'speech')
+      if (row.kind === 'video') return normalizeMediaModel(row, 'video')
       if (row.evaluations) return normalizeLanguageModel(row)
       if (typeof row.elo === 'number') {
         return normalizeMediaModel(row, 'image')

@@ -1,3 +1,6 @@
+import { BenchmarkMeta, PriceMeta } from '../components/BenchmarkMeta'
+import { BenchmarkPicker } from '../components/BenchmarkPicker'
+import { modelPath } from '../lib/benchmarks'
 import { ArrowLeft, MagnifyingGlass, X } from '@phosphor-icons/react'
 import { motion } from 'motion/react'
 import { useMemo, useState } from 'react'
@@ -38,6 +41,7 @@ type Row = {
 }
 
 const ROWS: Row[] = [
+  { key: 'selectedTaskScore', get: (m) => Number.isFinite(m.score) ? m.score : null, format: (v) => formatScore(v, 3) },
   { key: 'intelligenceIndex', get: (m) => m.evaluations.artificial_analysis_intelligence_index, format: (v) => formatScore(v) },
   { key: 'codingIndex', get: (m) => codingScore(m), format: (v) => formatScore(v) },
   { key: 'mathIndex', get: (m) => m.evaluations.artificial_analysis_math_index, format: (v) => formatScore(v) },
@@ -131,7 +135,7 @@ function CompareRadar({ models }: { models: RankedModel[] }) {
       <div className="mt-2 flex flex-wrap justify-center gap-4 font-mono text-[11px] text-mercury-mute">
         {models.map((m, i) => (
           <span key={m.id} className="inline-flex items-center gap-1.5">
-            <i className="h-2 w-2 rounded-full" style={{ background: COLORS[i] }} /> {shortModelName(m.name)}
+            <i className="h-2 w-2 shrink-0 rounded-full" style={{ background: COLORS[i] }} /> {shortModelName(m.name)}
           </span>
         ))}
       </div>
@@ -144,13 +148,14 @@ export function ComparePage() {
   const { models, data, loading } = useModels()
   const [params, setParams] = useSearchParams()
   const task = parseTask(params.get('task'))
+  const benchmark = params.get('benchmark')
   const slugs = useMemo(
     () => [...new Set((params.get('m') ?? '').split(',').filter(Boolean))].slice(0, MAX_COMPARE),
     [params],
   )
   const [query, setQuery] = useState('')
 
-  const ranked = useMemo(() => rankModels(models, task, 'score'), [models, task])
+  const ranked = useMemo(() => rankModels(models, task, 'score', 4000, 1000, benchmark), [models, task, benchmark])
   const bySlug = useMemo(() => new Map(ranked.map((m) => [m.slug, m])), [ranked])
   // Models without a score for this task still deserve a column; rank/score just read as empty.
   const selected = slugs
@@ -194,7 +199,7 @@ export function ComparePage() {
     <PageShell fetchedAt={data?.fetchedAt} source={data?.source} wide>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
-          to={`/bench?task=${task}`}
+          to={`/bench?task=${task}${benchmark ? `&benchmark=${encodeURIComponent(benchmark)}` : ''}`}
           className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-mercury-mute hover:text-cyan"
         >
           <ArrowLeft size={14} />
@@ -215,16 +220,17 @@ export function ComparePage() {
         </div>
       ) : (
         <>
+          <BenchmarkPicker models={models} task={task} value={benchmark} sources={data?.sources} onChange={(value) => { const next = new URLSearchParams(params); next.set('benchmark', value); setParams(next, { replace: true }) }} />
           <div className="panel mb-6 rounded-2xl p-3">
             <div className="flex flex-wrap items-center gap-2">
               {selected.map((m, i) => (
                 <span
                   key={m.id}
-                  className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm text-mercury"
+                  className="inline-flex max-w-full items-center gap-2 rounded-2xl border px-3 py-1.5 text-sm text-mercury"
                   style={{ borderColor: `${COLORS[i]}66`, background: `${COLORS[i]}14` }}
                 >
-                  <i className="h-2 w-2 rounded-full" style={{ background: COLORS[i] }} />
-                  {m.name}
+                  <i className="h-2 w-2 shrink-0 rounded-full" style={{ background: COLORS[i] }} />
+                  <span className="min-w-0 [overflow-wrap:anywhere]">{m.name}</span>
                   <button
                     type="button"
                     onClick={() => remove(m.slug)}
@@ -236,7 +242,7 @@ export function ComparePage() {
                 </span>
               ))}
               {slugs.length < MAX_COMPARE ? (
-                <div className="relative min-w-[220px] flex-1">
+                <div className="relative w-full min-w-0 basis-full sm:min-w-[220px] sm:flex-1 sm:basis-auto">
                   <MagnifyingGlass
                     size={16}
                     className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-mercury-mute"
@@ -269,7 +275,7 @@ export function ComparePage() {
                     <button
                       type="button"
                       onClick={() => add(m)}
-                      className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-mercury hover:bg-cyan/10"
+                      className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm text-mercury hover:bg-cyan/10"
                     >
                       <span>{m.name}</span>
                       <span className="text-xs text-mercury-mute">{m.model_creator.name}</span>
@@ -284,9 +290,10 @@ export function ComparePage() {
             <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
               {selected.every((m) => m.kind === 'language') && <CompareRadar models={selected} />}
 
-              <section className="panel overflow-hidden rounded-2xl">
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-left text-sm">
+              <section className="panel min-w-0 overflow-hidden rounded-2xl">
+                <p className="border-b border-white/8 px-4 py-3 text-xs text-mercury-mute lg:hidden">{t('scrollTable')}</p>
+                <div className="table-scroll overflow-x-auto" role="region" aria-label={t('navCompare')} tabIndex={0}>
+                  <table className="comparison-table w-full border-collapse text-left text-sm">
                     <thead>
                       <tr className="border-b border-white/8 text-[11px] uppercase tracking-[0.16em] text-mercury-mute">
                         <th className="px-4 py-3 font-medium" />
@@ -295,13 +302,15 @@ export function ComparePage() {
                             <div className="flex items-start gap-2">
                               <i className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: COLORS[i] }} />
                               <div>
-                                <Link to={`/model/${m.slug}?task=${task}`} className="text-sm text-mercury hover:text-cyan">
+                                <Link to={modelPath(m, task)} className="text-sm text-mercury hover:text-cyan">
                                   {shortModelName(m.name)}
                                 </Link>
                                 <p className="text-[11px] text-mercury-mute">
                                   {m.model_creator.name}
                                   {m.rank > 0 ? ` · #${m.rank}` : ''}
                                 </p>
+                                <BenchmarkMeta result={m.benchmark} compact />
+                                <PriceMeta pricing={m.pricing} />
                               </div>
                               <FavoriteButton slug={m.slug} size={14} />
                             </div>

@@ -1,5 +1,7 @@
 import { ArrowRight, ChartBar, GitBranch, Newspaper, Plugs, Scales } from '@phosphor-icons/react'
 import { useMemo, useState } from 'react'
+import { BenchmarkPicker } from '../components/BenchmarkPicker'
+import { BestPerformanceCard } from '../components/BestPerformanceCard'
 import { ComparePanel } from '../components/ComparePanel'
 import { MagneticLink } from '../components/MagneticLink'
 import { MercuryOrb } from '../components/MercuryOrb'
@@ -21,10 +23,11 @@ export function HomePage() {
   const { models, data, loading, notice } = useModels()
   const pulse = usePulse()
   const [task, setTask] = useState<TaskId>('coding')
+  const [benchmark, setBenchmark] = useState<string | null>(null)
 
   const ranked = useMemo(
-    () => rankModels(models, task, 'score'),
-    [models, task],
+    () => rankModels(models, task, 'score', 4000, 1000, benchmark),
+    [models, task, benchmark],
   )
   const frontier = useMemo(() => paretoFrontier(ranked, task), [ranked, task])
   const creators = useMemo(
@@ -47,11 +50,14 @@ export function HomePage() {
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <MagneticLink
-              to={`/bench?task=${task}`}
+              to={`/bench?task=${task}${ranked[0]?.benchmark ? `&benchmark=${encodeURIComponent(ranked[0].benchmark.id)}` : ''}`}
               className="inline-flex items-center gap-2 rounded-full bg-mercury px-5 py-2.5 text-sm font-medium text-ink shadow-[0_0_32px_-10px_rgba(94,234,212,0.8)] transition hover:bg-cyan"
             >
               {t('openBench')}
               <ArrowRight size={16} weight="bold" />
+            </MagneticLink>
+            <MagneticLink to="/find" className="inline-flex min-h-11 items-center rounded-full border border-cyan/30 px-5 py-2.5 text-sm text-cyan hover:bg-cyan/10">
+              {t('navFinder')}
             </MagneticLink>
             {notice && (
               <span className="font-mono text-[11px] text-mercury-mute">{t(notice)}</span>
@@ -86,13 +92,19 @@ export function HomePage() {
           icon={ChartBar}
           title={t('navBench')}
           description={t('homeBenchDesc')}
-          to={`/bench?task=${task}`}
+          to={`/bench?task=${task}${ranked[0]?.benchmark ? `&benchmark=${encodeURIComponent(ranked[0].benchmark.id)}` : ''}`}
           cta={t('viewFull')}
         />
         <div className="mb-5">
-          <TaskPicker value={task} onChange={setTask} compact />
+          <TaskPicker value={task} onChange={(next) => { setTask(next); setBenchmark(null) }} compact />
         </div>
-        {loading ? <SkeletonBlock className="h-44" /> : <TopTeaser models={ranked} task={task} hideHeader />}
+        {loading ? <SkeletonBlock className="h-44" /> : (
+          <div className="space-y-5">
+            <BenchmarkPicker models={models} task={task} value={benchmark} onChange={setBenchmark} sources={data?.sources} />
+            <BestPerformanceCard models={ranked} task={task} />
+            <TopTeaser models={ranked} task={task} hideHeader />
+          </div>
+        )}
       </section>
 
       <section className="mt-14">

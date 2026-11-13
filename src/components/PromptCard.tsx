@@ -1,8 +1,10 @@
 import { ArrowSquareOut, Check, Copy, Eye, EyeSlash, Fire, Sparkle, ThumbsUp } from '@phosphor-icons/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useRelativeTime } from './PulseItems'
 import { useI18n } from '../i18n/I18nProvider'
 import type { PromptItem } from '../hooks/usePrompts'
+import { Link } from 'react-router-dom'
+import { usePromptWorkspace } from '../hooks/PromptWorkspaceProvider'
 
 const TYPE_STYLE: Record<string, string> = {
   TEXT: 'border-white/15 text-mercury-dim',
@@ -16,12 +18,16 @@ function isImage(url: string) {
   return /\.(png|jpe?g|webp|gif|avif)(\?|$)/i.test(url)
 }
 
-export function PromptCard({ prompt }: { prompt: PromptItem }) {
+export function PromptCard({ prompt, cover }: { prompt: PromptItem; cover?: ReactNode }) {
   const { t, locale } = useI18n()
   const curated = prompt.origin === 'mercury'
   const rel = useRelativeTime()
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [failedMedia, setFailedMedia] = useState<string | null>(null)
+  const hasMedia = !!prompt.mediaUrl && isImage(prompt.mediaUrl) && failedMedia !== prompt.mediaUrl
+  const { data: workspace, commit, error: workspaceError } = usePromptWorkspace()
+  const saved = workspace.prompts.some((item) => item.sourceId === prompt.id)
 
   useEffect(() => {
     if (!copied) return
@@ -42,9 +48,11 @@ export function PromptCard({ prompt }: { prompt: PromptItem }) {
     <article
       className={`panel flex h-full flex-col rounded-xl p-4 transition hover:border-cyan/30 ${curated ? 'border-cyan/25' : ''}`}
     >
-      {prompt.mediaUrl && isImage(prompt.mediaUrl) && (
+      {cover && !hasMedia && <div className="-mx-4 -mt-4 mb-4 h-40 overflow-hidden rounded-t-xl border-b border-white/8">{cover}</div>}
+      {hasMedia && (
         <img
-          src={prompt.mediaUrl}
+          src={prompt.mediaUrl!}
+          onError={() => setFailedMedia(prompt.mediaUrl)}
           alt=""
           loading="lazy"
           className="mb-3 h-36 w-full rounded-lg border border-white/8 object-cover"
@@ -130,7 +138,13 @@ export function PromptCard({ prompt }: { prompt: PromptItem }) {
           <span className="ml-auto shrink-0">{rel(prompt.createdAt)}</span>
         </div>
 
-        <div className="mt-3 flex items-center gap-1.5">
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          {saved ? <Link to="/workspace" className="inline-flex min-h-11 items-center rounded-md border border-cyan/30 px-2.5 text-xs text-cyan">{t('workspaceSaved')}</Link> : (
+            <button type="button" onClick={() => commit({ ...workspace, prompts: [...workspace.prompts, {
+              id: crypto.randomUUID(), title: prompt.title, content: prompt.content, collectionId: null, values: {},
+              sourceId: prompt.id, sourceUrl: prompt.url, truncated: prompt.contentTruncated,
+            }] })} className="inline-flex min-h-11 items-center rounded-md border border-white/15 px-2.5 text-xs text-mercury-mute hover:text-cyan">{t('workspaceSave')}</button>
+          )}
           <button
             type="button"
             onClick={copy}
@@ -161,6 +175,7 @@ export function PromptCard({ prompt }: { prompt: PromptItem }) {
             </a>
           )}
         </div>
+        {workspaceError && <p role="alert" className="mt-2 text-xs text-amber-200">{t('workspaceStorageError')}</p>}
       </div>
     </article>
   )

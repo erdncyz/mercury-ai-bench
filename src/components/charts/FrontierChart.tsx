@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { benchmarkDigits, modelPath } from '../../lib/benchmarks'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useI18n } from '../../i18n/I18nProvider'
@@ -20,12 +21,12 @@ import {
 } from '../../lib/ranking'
 import type { RankedModel, TaskId } from '../../types/models'
 
-const W = 640
+const MAX_WIDTH = 640
 const H = 340
 const PAD = { l: 54, r: 18, t: 22, b: 46 }
 
 function priceLabel(model: RankedModel, task: TaskId) {
-  return task === 'image' || task === 'speech'
+  return task === 'image' || task === 'speech' || task === 'video' || task === 'presentation'
     ? formatMediaPrice(model)
     : formatUsd(model.pricing.price_1m_blended_3_to_1)
 }
@@ -116,6 +117,17 @@ export function FrontierChart({
   const reduced = useReducedMotion()
   const [hover, setHover] = useState<string | null>(null)
   const [cursor, setCursor] = useState({ x: 0, y: 0 })
+  const chartRef = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState(MAX_WIDTH)
+  const W = Math.max(240, width)
+
+  useEffect(() => {
+    const element = chartRef.current
+    if (!element) return
+    const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width))
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [models])
 
   const { points, frontier, xTicks, yTicks, legend } = useMemo(() => {
     const pool = chartable(models, task).slice(0, 48)
@@ -181,7 +193,7 @@ export function FrontierChart({
       }))
 
     return { points: mapped, frontier: frontPts, xTicks, yTicks, legend }
-  }, [models, task])
+  }, [models, task, W])
 
   const hoverPoint = points.find((p) => p.model.id === hover)
   const line = frontier.map((p) => `${p.x},${p.y}`).join(' ')
@@ -211,7 +223,7 @@ export function FrontierChart({
         </div>
       </div>
 
-      <div className="relative">
+      <div ref={chartRef} className="relative">
         <svg
           viewBox={`0 0 ${W} ${H}`}
           className="h-auto w-full"
@@ -329,16 +341,20 @@ export function FrontierChart({
                   ease: cinemaEase,
                 }}
                 onMouseEnter={() => setHover(point.model.id)}
-                onFocus={() => setHover(point.model.id)}
+                onFocus={() => {
+                  setHover(point.model.id)
+                  setCursor({ x: point.x, y: point.y })
+                }}
                 onBlur={() => setHover(null)}
-                onClick={() => navigate(`/model/${point.model.slug}?task=${task}`)}
+                onClick={() => navigate(modelPath(point.model, task))}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault()
-                    navigate(`/model/${point.model.slug}?task=${task}`)
+                    navigate(modelPath(point.model, task))
                   }
                 }}
               >
+                <circle cx={point.x} cy={point.y} r={12} fill="transparent" />
                 <Marker
                   x={point.x}
                   y={point.y}
@@ -356,9 +372,10 @@ export function FrontierChart({
         <AnimatePresence>
           {hoverPoint && (
             <motion.div
-              className="pointer-events-none absolute z-10 min-w-[180px] rounded-xl border border-white/10 bg-ink-elevated/95 px-3 py-2.5 text-xs shadow-2xl backdrop-blur-md"
+              className="pointer-events-none absolute z-10 rounded-xl border border-white/10 bg-ink-elevated/95 px-3 py-2.5 text-xs shadow-2xl backdrop-blur-md"
               style={{
-                left: Math.min(cursor.x + 14, 280),
+                width: Math.min(240, W - 16),
+                left: Math.max(8, Math.min(cursor.x + 14, W - Math.min(240, W - 16) - 8)),
                 top: Math.max(cursor.y - 12, 8),
               }}
               initial={{ opacity: 0, y: 4 }}
@@ -383,7 +400,7 @@ export function FrontierChart({
                   : ''}
               </p>
               <p className="mt-1.5 font-mono text-cyan">
-                {t('score')} {formatScore(hoverPoint.model.score, scoreDigits(task))} ·{' '}
+                {t('score')} {formatScore(hoverPoint.model.score, benchmarkDigits(hoverPoint.model.benchmark, scoreDigits(task)))} ·{' '}
                 {priceLabel(hoverPoint.model, task)}
               </p>
               {hoverPoint.model.valueScore > 0 && (

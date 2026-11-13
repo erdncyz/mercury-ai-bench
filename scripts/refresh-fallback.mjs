@@ -24,6 +24,10 @@ const SPEECH_URLS = [
   'https://artificialanalysis.ai/api/v2/media/text-to-speech/models',
   'https://artificialanalysis.ai/api/v2/media/text-to-speech/models/free',
 ]
+const VIDEO_URLS = [
+  'https://artificialanalysis.ai/api/v2/media/text-to-video/models',
+  'https://artificialanalysis.ai/api/v2/media/text-to-video/models/free',
+]
 
 function loadKey() {
   if (process.env.ARTIFICIAL_ANALYSIS_API_KEY) return process.env.ARTIFICIAL_ANALYSIS_API_KEY
@@ -109,8 +113,8 @@ async function main() {
   const cache = devCache()
   const dev = devSnapshot(cache)
   if (!force && dev && dev.age < MAX_AGE_MS && dev.age < age) {
-    const { language, image, speech, fetchedAt } = dev.payload
-    const body = JSON.stringify({ fetchedAt, language, image, speech })
+    const { language, image, speech, video = [], fetchedAt } = dev.payload
+    const body = JSON.stringify({ fetchedAt, language, image, speech, video })
     for (const target of targets) writeFileSync(target, body)
     console.log(`[refresh-fallback] Reused the ${Math.round(dev.age / 3600000)}h-old dev snapshot (no API call).`)
     return
@@ -125,13 +129,14 @@ async function main() {
   const language = await fetchPaged(LANGUAGE_URLS, apiKey)
   const image = await fetchPaged(IMAGE_URLS, apiKey)
   const speech = await fetchPaged(SPEECH_URLS, apiKey)
+  const video = await fetchPaged(VIDEO_URLS, apiKey)
 
   if (!language.length) {
     console.warn('[refresh-fallback] Upstream returned no language models; keeping existing fallback files.')
     return
   }
 
-  const payload = { fetchedAt: new Date().toISOString(), language, image, speech }
+  const payload = { fetchedAt: new Date().toISOString(), language, image, speech, video }
   const body = JSON.stringify(payload)
   for (const target of targets) writeFileSync(target, body)
   console.log(
